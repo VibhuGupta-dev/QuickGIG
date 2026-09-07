@@ -23,9 +23,37 @@ export default function AddGig() {
     category: CATEGORIES[0],
     payment: "",
   });
+  const [location, setLocation] = useState<{lng: number, lat: number} | null>(null);
+  const [locating, setLocating] = useState(false);
+
+  const handleGetLocation = () => {
+    setLocating(true);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            lng: position.coords.longitude,
+            lat: position.coords.latitude,
+          });
+          setLocating(false);
+        },
+        () => {
+          alert("Failed to get location. Please allow location access.");
+          setLocating(false);
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser");
+      setLocating(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!location) {
+      alert("Please fetch your location first so workers nearby can find this gig.");
+      return;
+    }
     setLoading(true);
     
     try {
@@ -34,7 +62,9 @@ export default function AddGig() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          payment: Number(formData.payment)
+          payment: Number(formData.payment),
+          longitude: location.lng,
+          latitude: location.lat
         }),
       });
 
@@ -110,6 +140,18 @@ export default function AddGig() {
               value={formData.payment}
               onChange={(e) => setFormData({ ...formData, payment: e.target.value })}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Gig Location</label>
+            <button
+              type="button"
+              onClick={handleGetLocation}
+              disabled={locating}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:bg-gray-100 disabled:text-gray-400 transition-colors"
+            >
+              {locating ? "Fetching Location..." : location ? "📍 Exact Location Pinned" : "📍 Pin Current Location"}
+            </button>
           </div>
 
           <div className="pt-4">

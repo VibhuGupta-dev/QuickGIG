@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Briefcase, MapPin, ArrowRight, ShieldCheck, Clock, Zap } from "lucide-react";
+import { MapPin, ArrowRight, ShieldCheck, Clock, Zap } from "lucide-react";
 
 export default function Home() {
   return (

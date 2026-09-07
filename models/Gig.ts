@@ -5,8 +5,15 @@ const GigSchema = new mongoose.Schema({
   description: { type: String, required: true },
   category: { type: String, required: true },
   payment: { type: Number, required: true },
-  status: { type: String, default: 'Open' },
+  postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  location: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], required: true }, // [longitude, latitude]
+  },
+  status: { type: String, default: 'Open' }, // Open, Accepted, In-Progress, Completed
   createdAt: { type: Date, default: Date.now },
 });
+
+GigSchema.index({ location: '2dsphere' });
 
 export default mongoose.models.Gig || mongoose.model('Gig', GigSchema);

@@ -23,14 +23,22 @@ export async function POST(req: Request) {
 
     await dbConnect();
     const body = await req.json();
-    const { title, description, category, payment } = body;
+    const { title, description, category, payment, longitude, latitude } = body;
+
+    if (!longitude || !latitude) {
+      return NextResponse.json({ error: "Location is required to post a gig" }, { status: 400 });
+    }
 
     const gig = await Gig.create({
       title,
       description,
       category,
       payment,
-      // @ts-expect-error session.user type lacks id
+      location: {
+        type: 'Point',
+        coordinates: [Number(longitude), Number(latitude)]
+      },
+      // @ts-expect-error session.user lacks id
       postedBy: session.user.id
     });
 
