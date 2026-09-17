@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -16,15 +17,28 @@ const CATEGORIES = [
 
 export default function AddGig() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     category: CATEGORIES[0],
     payment: "",
+    expiresIn: "7" // days
   });
   const [location, setLocation] = useState<{lng: number, lat: number} | null>(null);
   const [locating, setLocating] = useState(false);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+    } else if (status === "authenticated") {
+      // @ts-expect-error isVerified is custom
+      if (!session?.user?.isVerified) {
+        router.push("/dashboard/verify");
+      }
+    }
+  }, [status, session, router]);
 
   const handleGetLocation = () => {
     setLocating(true);
@@ -57,21 +71,28 @@ export default function AddGig() {
     setLoading(true);
     
     try {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + parseInt(formData.expiresIn));
+
       const res = await fetch("/api/gigs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
           payment: Number(formData.payment),
           longitude: location.lng,
-          latitude: location.lat
+          latitude: location.lat,
+          expiresAt: expiresAt.toISOString(),
         }),
       });
 
       if (res.ok) {
         router.push("/dashboard");
       } else {
-        alert("Failed to post gig");
+        const errorData = await res.json();
+        alert(errorData.error || "Failed to post gig");
       }
     } catch {
       alert("An error occurred");
@@ -79,6 +100,12 @@ export default function AddGig() {
       setLoading(false);
     }
   };
+
+  // Prevent render if not verified yet to avoid flash of form
+  // @ts-expect-error isVerified custom
+  if (status === "loading" || !session?.user?.isVerified) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Checking permissions...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 font-medium">
@@ -140,6 +167,20 @@ export default function AddGig() {
               value={formData.payment}
               onChange={(e) => setFormData({ ...formData, payment: e.target.value })}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Gig Duration (Max 1 Week)</label>
+            <select
+              className="w-full rounded-lg border border-gray-300 py-3 px-4 text-gray-900 focus:ring-2 focus:ring-black focus:border-black sm:text-sm bg-white"
+              value={formData.expiresIn}
+              onChange={(e) => setFormData({ ...formData, expiresIn: e.target.value })}
+            >
+              <option value="1">1 Day</option>
+              <option value="3">3 Days</option>
+              <option value="5">5 Days</option>
+              <option value="7">1 Week</option>
+            </select>
           </div>
 
           <div>

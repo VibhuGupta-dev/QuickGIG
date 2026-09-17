@@ -10,6 +10,10 @@ const UserSchema = new mongoose.Schema({
     coordinates: { type: [Number], required: false }, // [longitude, latitude]
   },
   avgRating: { type: Number, default: 0 },
+  studentId: { type: String },
+  isVerified: { type: Boolean, default: false },
+  age: { type: Number },
+  session: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 

@@ -38,6 +38,13 @@ export default function GigDetail({ params }: { params: { id: string } }) {
   }, [status, params.id]);
 
   const handleAccept = async () => {
+    // @ts-expect-error custom
+    if (!session?.user?.isVerified) {
+      alert("You need to verify your student ID to accept gigs.");
+      router.push("/dashboard/verify");
+      return;
+    }
+
     setActionLoading(true);
     const res = await fetch("/api/applications", {
       method: "POST",
@@ -141,6 +148,15 @@ export default function GigDetail({ params }: { params: { id: string } }) {
         <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
           <h3 className="text-lg font-bold text-gray-900">Actions</h3>
           
+          {gig.application && (
+            <Link 
+              href={`/dashboard/chat/${gig.application._id}`}
+              className="w-full block text-center bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 transition-colors mb-4"
+            >
+              Chat with {isPoster ? 'Applicant' : 'Poster'}
+            </Link>
+          )}
+
           {!isPoster && gig.status === 'Open' && (
             <button 
               onClick={handleAccept}

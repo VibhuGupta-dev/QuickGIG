@@ -25,10 +25,32 @@ export const authOptions: NextAuthOptions = {
         if (!isMatch) {
           throw new Error("Invalid password");
         }
-        return { id: user._id.toString(), email: user.email, name: user.name };
+        return { id: user._id.toString(), email: user.email, name: user.name, isVerified: user.isVerified };
       }
     })
   ],
   session: { strategy: "jwt" },
+  callbacks: {
+    async jwt({ token, user, trigger, session }) {
+      if (user) {
+        token.id = user.id;
+        // @ts-expect-error user can have isVerified
+        token.isVerified = user.isVerified;
+      }
+      if (trigger === "update" && session) {
+        token.isVerified = session.isVerified;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user && token) {
+        // @ts-expect-error attaching id
+        session.user.id = token.id;
+        // @ts-expect-error attaching isVerified
+        session.user.isVerified = token.isVerified;
+      }
+      return session;
+    }
+  },
   secret: process.env.NEXTAUTH_SECRET || "fallback_secret",
 };

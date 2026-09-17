@@ -9,6 +9,10 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // @ts-expect-error isVerified is custom
+    if (!session.user.isVerified) {
+      return NextResponse.json({ error: "Student verification required to take gigs" }, { status: 403 });
+    }
 
     await dbConnect();
     const { gigId } = await req.json();

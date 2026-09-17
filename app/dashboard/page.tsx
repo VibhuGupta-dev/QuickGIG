@@ -2,12 +2,18 @@
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, LogOut, LayoutDashboard } from "lucide-react";
+import { Plus, LogOut, LayoutDashboard, Briefcase, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
-  const [activeTab, setActiveTab] = useState<'nearby' | 'posted' | 'applications'>('nearby');
+  
+  // Two main areas: 'find' (Find Work) and 'provide' (Post Work)
+  const [viewMode, setViewMode] = useState<'find' | 'provide'>('find');
+  
+  // Sub-tabs for 'find' view
+  const [findTab, setFindTab] = useState<'nearby' | 'applications'>('nearby');
+  
   const [gigs, setGigs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<{lng: number, lat: number} | null>(null);
@@ -52,25 +58,27 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      if (activeTab === 'nearby') {
-        if (!location) {
-          if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-              (pos) => setLocation({ lng: pos.coords.longitude, lat: pos.coords.latitude }),
-              () => alert("Location is required to find nearby gigs")
-            );
+      if (viewMode === 'find') {
+        if (findTab === 'nearby') {
+          if (!location) {
+            if ("geolocation" in navigator) {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => setLocation({ lng: pos.coords.longitude, lat: pos.coords.latitude }),
+                () => alert("Location is required to find nearby gigs")
+              );
+            }
+          } else {
+            fetchNearby();
           }
-        } else {
-          fetchNearby();
+        } else if (findTab === 'applications') {
+          fetchMyApplications();
         }
-      } else if (activeTab === 'posted') {
+      } else if (viewMode === 'provide') {
         fetchMyPosted();
-      } else if (activeTab === 'applications') {
-        fetchMyApplications();
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, activeTab, location]);
+  }, [status, viewMode, findTab, location]);
 
   if (status === "loading") return <div className="p-8 text-center text-gray-500">Loading...</div>;
   if (!session) return null;
@@ -88,40 +96,61 @@ export default function Dashboard() {
       </header>
 
       <main className="p-4 max-w-2xl mx-auto space-y-6">
-        <div className="flex justify-between items-center pt-2">
-          <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
-            <button 
-              onClick={() => setActiveTab('nearby')}
-              className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab === 'nearby' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
-            >
-              Nearby Gigs
-            </button>
-            <button 
-              onClick={() => setActiveTab('posted')}
-              className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab === 'posted' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
-            >
-              My Posts
-            </button>
-            <button 
-              onClick={() => setActiveTab('applications')}
-              className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab === 'applications' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
-            >
-              My Applications
-            </button>
-          </div>
-          
-          <Link href="/dashboard/add-gig" className="hidden sm:flex items-center text-sm font-medium bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 transition-colors shadow-sm">
-            <Plus className="w-4 h-4 mr-1" /> Post Gig
-          </Link>
+        
+        {/* Main Area Toggle */}
+        <div className="flex bg-gray-200/50 p-1 rounded-xl">
+          <button 
+            onClick={() => { setViewMode('find'); setGigs([]); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-lg transition-all ${viewMode === 'find' ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}
+          >
+            <Search className="w-4 h-4" /> Find Work
+          </button>
+          <button 
+            onClick={() => { setViewMode('provide'); setGigs([]); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-lg transition-all ${viewMode === 'provide' ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}
+          >
+            <Briefcase className="w-4 h-4" /> Post Work
+          </button>
         </div>
 
-        <div className="space-y-4 pt-4">
+        {/* Find Work View */}
+        {viewMode === 'find' && (
+          <div className="space-y-4 pt-2">
+            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
+              <button 
+                onClick={() => setFindTab('nearby')}
+                className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${findTab === 'nearby' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+              >
+                Nearby Gigs
+              </button>
+              <button 
+                onClick={() => setFindTab('applications')}
+                className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${findTab === 'applications' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+              >
+                My Applications
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Post Work View */}
+        {viewMode === 'provide' && (
+          <div className="flex justify-between items-center pt-2">
+            <h2 className="text-lg font-bold text-gray-800">My Posted Gigs</h2>
+            <Link href="/dashboard/add-gig" className="flex items-center text-sm font-medium bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 transition-colors shadow-sm">
+              <Plus className="w-4 h-4 mr-1" /> Post New Gig
+            </Link>
+          </div>
+        )}
+
+        {/* Gigs List */}
+        <div className="space-y-4 pt-2">
           {loading ? (
             <div className="text-center p-12 text-gray-500">Loading gigs...</div>
           ) : gigs.length === 0 ? (
             <div className="text-center p-12 bg-white rounded-3xl border border-gray-100 text-gray-500 shadow-sm">
               <p>No gigs found here.</p>
-              {activeTab === 'nearby' && <p className="text-sm mt-2">Try posting one yourself!</p>}
+              {viewMode === 'provide' && <p className="text-sm mt-2">Click "Post New Gig" to get started!</p>}
             </div>
           ) : (
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -146,7 +175,7 @@ export default function Dashboard() {
                     <span className="font-bold text-black text-lg">₹{gig.payment}</span>
                   </div>
                   <div className="flex items-center text-xs text-gray-400 font-semibold gap-2">
-                    {activeTab === 'nearby' && gig.postedBy?.name && (
+                    {viewMode === 'find' && findTab === 'nearby' && gig.postedBy?.name && (
                       <span>By {gig.postedBy.name}</span>
                     )}
                     {gig.applicationStatus && (
@@ -160,10 +189,12 @@ export default function Dashboard() {
           )}
         </div>
         
-        {/* Mobile floating action button */}
-        <Link href="/dashboard/add-gig" className="sm:hidden fixed bottom-6 right-6 flex items-center justify-center w-14 h-14 bg-black text-white rounded-full shadow-xl hover:bg-gray-800 transition-colors">
-          <Plus className="w-6 h-6" />
-        </Link>
+        {/* Mobile floating action button for Provide mode */}
+        {viewMode === 'provide' && (
+          <Link href="/dashboard/add-gig" className="sm:hidden fixed bottom-6 right-6 flex items-center justify-center w-14 h-14 bg-black text-white rounded-full shadow-xl hover:bg-gray-800 transition-colors">
+            <Plus className="w-6 h-6" />
+          </Link>
+        )}
       </main>
     </div>
   );
