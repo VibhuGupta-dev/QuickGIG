@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 
 const CATEGORIES = [
   "Errand",
@@ -24,10 +24,42 @@ export default function AddGig() {
     description: "",
     category: CATEGORIES[0],
     payment: "",
-    expiresIn: "7" // days
+    expiresIn: "7"
   });
   const [location, setLocation] = useState<{lng: number, lat: number} | null>(null);
   const [locating, setLocating] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [priceLocked, setPriceLocked] = useState(false);
+
+  const handleEstimatePrice = async () => {
+    if (!formData.title || !formData.description) {
+      alert("Please enter a title and description first for the AI to estimate.");
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai-price", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          title: formData.title, 
+          description: formData.description, 
+          category: formData.category 
+        })
+      });
+      const data = await res.json();
+      if (data.price) {
+        setFormData({ ...formData, payment: data.price.toString() });
+        setPriceLocked(true);
+      } else {
+        alert(data.error || "Failed to estimate price.");
+      }
+    } catch {
+      alert("Error connecting to AI.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -66,6 +98,10 @@ export default function AddGig() {
     e.preventDefault();
     if (!location) {
       alert("Please fetch your location first so workers nearby can find this gig.");
+      return;
+    }
+    if (!priceLocked) {
+      alert("Please calculate the Fair Market Price using AI before posting.");
       return;
     }
     setLoading(true);
@@ -157,16 +193,29 @@ export default function AddGig() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Payment Offered (₹)</label>
-            <input
-              type="number"
-              required
-              min="0"
-              className="w-full rounded-lg border border-gray-300 py-3 px-4 text-gray-900 focus:ring-2 focus:ring-black focus:border-black sm:text-sm"
-              placeholder="e.g., 500"
-              value={formData.payment}
-              onChange={(e) => setFormData({ ...formData, payment: e.target.value })}
-            />
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Payment Offered (INR)</label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                required
+                min="0"
+                readOnly={priceLocked}
+                className="w-full rounded-lg border border-gray-300 py-3 px-4 text-gray-900 focus:ring-2 focus:ring-black focus:border-black sm:text-sm bg-gray-50"
+                placeholder="Calculated by AI..."
+                value={formData.payment}
+                onChange={(e) => setFormData({ ...formData, payment: e.target.value })}
+              />
+              <button
+                type="button"
+                onClick={handleEstimatePrice}
+                disabled={aiLoading || priceLocked}
+                className="flex items-center gap-1 bg-black text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-800 disabled:bg-gray-300 whitespace-nowrap"
+              >
+                <Sparkles className="w-4 h-4" />
+                {aiLoading ? "Calculating..." : priceLocked ? "Locked" : "AI Fair Price"}
+              </button>
+            </div>
+            {!priceLocked && <p className="text-xs text-gray-500 mt-1">AI ensures market-standard pricing to protect both parties.</p>}
           </div>
 
           <div>

@@ -1,9 +1,9 @@
 "use client";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, Clock, Send, Check, CheckCheck } from "lucide-react";
 
 export default function GigDetail({ params }: { params: { id: string } }) {
   const { data: session, status } = useSession();
@@ -12,14 +12,16 @@ export default function GigDetail({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [review, setReview] = useState({ rating: 5, comment: "" });
+  
+  // Chat state
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   const router = useRouter();
 
   const fetchGig = async () => {
-    // In a real app, we'd have a GET /api/gigs/[id] route.
-    // For simplicity since we don't have it, we'll fetch all and filter or just create the single route.
-    // Let's assume we create a quick GET route inside route.ts or just fetch from /api/gigs and find.
-    // Better: let's quickly hit an endpoint. Wait, we didn't create /api/gigs/[id] GET!
-    // I will write the GET /api/gigs/[id]/route.ts next.
     try {
       const res = await fetch(`/api/gigs/${params.id}`);
       const data = await res.json();
@@ -31,20 +33,39 @@ export default function GigDetail({ params }: { params: { id: string } }) {
     }
   };
 
+  const fetchMessages = async () => {
+    try {
+      const res = await fetch(`/api/chat/${params.id}`);
+      const data = await res.json();
+      setMessages(data);
+      // Mark as read
+      await fetch(`/api/chat/${params.id}/read`, { method: "PATCH" });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     if (status === "unauthenticated") router.push("/auth/login");
     if (status === "authenticated") fetchGig();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, params.id]);
 
-  const handleAccept = async () => {
-    // @ts-expect-error custom
-    if (!session?.user?.isVerified) {
-      alert("You need to verify your student ID to accept gigs.");
-      router.push("/dashboard/verify");
-      return;
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (gig && gig.status !== 'Open') {
+      fetchMessages();
+      interval = setInterval(fetchMessages, 3000); // Poll every 3s
     }
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gig]);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleAccept = async () => {
     setActionLoading(true);
     const res = await fetch("/api/applications", {
       method: "POST",
@@ -74,15 +95,12 @@ export default function GigDetail({ params }: { params: { id: string } }) {
 
   const handleSubmitReview = async () => {
     setActionLoading(true);
-    // Find the person to review: If current user is poster, review the worker. If worker, review poster.
-    // Since we simplified and don't populate the exact worker in Gig directly (it's in Applications), 
-    // we'll just review the poster for now as an example.
     const res = await fetch("/api/reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         gigId: gig._id,
-        reviewedUserId: gig.postedBy._id || gig.postedBy, // simplified
+        reviewedUserId: gig.postedBy._id || gig.postedBy,
         rating: review.rating,
         comment: review.comment
       }),
@@ -95,6 +113,25 @@ export default function GigDetail({ params }: { params: { id: string } }) {
     setActionLoading(false);
   };
 
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !gig.application) return;
+
+    // @ts-expect-error session.user lacks id
+    const isPoster = session?.user?.id === (gig.postedBy?._id || gig.postedBy);
+    const receiverId = isPoster ? gig.application.workerId._id : gig.postedBy._id;
+
+    const content = newMessage;
+    setNewMessage(""); // optimistic clear
+
+    await fetch(`/api/chat/${params.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, receiverId }),
+    });
+    fetchMessages(); // refresh instantly
+  };
+
   if (loading || status === "loading") return <div className="p-8 text-center">Loading...</div>;
   if (!gig) return <div className="p-8 text-center">Gig not found.</div>;
 
@@ -102,7 +139,7 @@ export default function GigDetail({ params }: { params: { id: string } }) {
   const isPoster = session?.user?.id === (gig.postedBy?._id || gig.postedBy);
 
   return (
-    <div className="min-h-screen bg-gray-50 font-medium">
+    <div className="min-h-screen bg-gray-50 font-medium pb-20">
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-4 sticky top-0 z-50 flex items-center shadow-sm">
         <Link href="/dashboard" className="text-gray-500 hover:text-black mr-4 transition-colors">
           <ArrowLeft className="w-6 h-6" />
@@ -142,21 +179,18 @@ export default function GigDetail({ params }: { params: { id: string } }) {
               </div>
             )}
           </div>
+          {gig.application && (
+             <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-sm">
+                <span className="font-bold text-gray-700">Assigned Worker: </span>
+                <span className="text-gray-900">{gig.application.workerId.name}</span>
+             </div>
+          )}
         </div>
 
         {/* Actions */}
         <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
           <h3 className="text-lg font-bold text-gray-900">Actions</h3>
           
-          {gig.application && (
-            <Link 
-              href={`/dashboard/chat/${gig.application._id}`}
-              className="w-full block text-center bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 transition-colors mb-4"
-            >
-              Chat with {isPoster ? 'Applicant' : 'Poster'}
-            </Link>
-          )}
-
           {!isPoster && gig.status === 'Open' && (
             <button 
               onClick={handleAccept}
@@ -224,6 +258,57 @@ export default function GigDetail({ params }: { params: { id: string } }) {
             <p className="text-gray-500 text-sm text-center">Gig is currently {gig.status}. Waiting for poster to update.</p>
           )}
         </div>
+
+        {/* Chat Section */}
+        {gig.status !== 'Open' && (
+          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
+            <div className="bg-gray-900 p-4 text-white font-bold">
+              Chat {isPoster ? `with ${gig.application?.workerId.name}` : `with ${gig.postedBy?.name}`}
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+              {messages.length === 0 ? (
+                <div className="text-center text-gray-400 text-sm mt-10">Say hi to start the conversation!</div>
+              ) : (
+                messages.map((msg) => {
+                  // @ts-expect-error session.user lacks id
+                  const isMine = msg.senderId === session?.user?.id;
+                  return (
+                    <div key={msg._id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMine ? 'bg-black text-white rounded-tr-sm' : 'bg-white border border-gray-200 text-black rounded-tl-sm'}`}>
+                        <p className="text-sm">{msg.content}</p>
+                      </div>
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        {isMine && (
+                          msg.isRead ? <CheckCheck className="w-3 h-3 text-blue-500" /> : <Check className="w-3 h-3 text-gray-400" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-200 flex gap-2">
+              <input 
+                type="text" 
+                placeholder="Type a message..." 
+                className="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-black"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+              />
+              <button 
+                type="submit" 
+                disabled={!newMessage.trim()}
+                className="bg-black text-white p-2 w-10 h-10 rounded-full flex items-center justify-center disabled:bg-gray-300 hover:bg-gray-800 transition-colors"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
+        )}
       </main>
     </div>
   );
