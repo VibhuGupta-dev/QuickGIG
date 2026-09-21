@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles, MapPin, Search } from "lucide-react";
 
 const CATEGORIES = [
   "Errand",
@@ -27,7 +27,11 @@ export default function AddGig() {
     expiresIn: "7",
     isNegotiable: false
   });
+  
   const [location, setLocation] = useState<{lng: number, lat: number} | null>(null);
+  const [address, setAddress] = useState("");
+  const [locationQuery, setLocationQuery] = useState("");
+  
   const [locating, setLocating] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [priceLocked, setPriceLocked] = useState(false);
@@ -77,15 +81,26 @@ export default function AddGig() {
     setLocating(true);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            lng: position.coords.longitude,
-            lat: position.coords.latitude,
-          });
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setLocation({ lng, lat });
+          
+          // Reverse geocode
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+            const data = await res.json();
+            if (data && data.display_name) {
+              setAddress(data.display_name);
+              setLocationQuery(data.display_name);
+            }
+          } catch (e) {
+            console.error("Failed to reverse geocode");
+          }
           setLocating(false);
         },
         () => {
-          alert("Failed to get location. Please allow location access.");
+          alert("Failed to get location. Please allow location access or type your address manually.");
           setLocating(false);
         }
       );
@@ -95,10 +110,31 @@ export default function AddGig() {
     }
   };
 
+  const handleSearchLocation = async () => {
+    if (!locationQuery.trim()) return;
+    setLocating(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const { lat, lon, display_name } = data[0];
+        setLocation({ lat: Number(lat), lng: Number(lon) });
+        setAddress(display_name);
+        setLocationQuery(display_name); // update with full formatted name
+        alert(`Location found: ${display_name}`);
+      } else {
+        alert("Location not found. Try a different search.");
+      }
+    } catch (e) {
+      alert("Error finding location.");
+    }
+    setLocating(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!location) {
-      alert("Please fetch your location first so workers nearby can find this gig.");
+      alert("Please set a location first so workers nearby can find this gig.");
       return;
     }
     if (!priceLocked) {
@@ -120,6 +156,7 @@ export default function AddGig() {
           category: formData.category,
           payment: Number(formData.payment),
           isNegotiable: formData.isNegotiable,
+          address: address, // sending the address string
           longitude: location.lng,
           latitude: location.lat,
           expiresAt: expiresAt.toISOString(),
@@ -146,7 +183,7 @@ export default function AddGig() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-medium">
+    <div className="min-h-screen bg-gray-50 font-medium pb-20">
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-4 sticky top-0 z-50 flex items-center shadow-sm">
         <Link href="/dashboard" className="text-gray-500 hover:text-black mr-4 transition-colors">
           <ArrowLeft className="w-6 h-6" />
@@ -245,16 +282,49 @@ export default function AddGig() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Gig Location</label>
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <label className="block text-sm font-bold text-gray-900 mb-3 flex items-center gap-1">
+              <MapPin className="w-4 h-4" /> Gig Location
+            </label>
+            
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                placeholder="Type location (e.g. Lucknow Keshav Nagar)"
+                className="flex-1 rounded-lg border border-gray-300 py-2 px-3 text-sm focus:ring-2 focus:ring-black"
+                value={locationQuery}
+                onChange={(e) => setLocationQuery(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={handleSearchLocation}
+                disabled={locating || !locationQuery.trim()}
+                className="bg-gray-200 text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-300 disabled:bg-gray-100 flex items-center gap-1"
+              >
+                <Search className="w-4 h-4" /> Search
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 my-2 text-sm text-gray-500">
+              <div className="h-px bg-gray-300 flex-1"></div>
+              <span>OR</span>
+              <div className="h-px bg-gray-300 flex-1"></div>
+            </div>
+
             <button
               type="button"
               onClick={handleGetLocation}
               disabled={locating}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:bg-gray-100 disabled:text-gray-400 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-bold text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 transition-colors"
             >
-              {locating ? "Fetching Location..." : location ? "📍 Exact Location Pinned" : "📍 Pin Current Location"}
+              {locating ? "Fetching..." : "📍 Use Current GPS Location"}
             </button>
+            
+            {location && (
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+                <strong>Location Set:</strong> {address || "Coordinates pinned"}
+              </div>
+            )}
           </div>
 
           <div className="pt-4">

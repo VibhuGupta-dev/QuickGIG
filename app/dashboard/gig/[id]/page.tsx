@@ -81,7 +81,12 @@ export default function GigDetail({ params }: { params: { id: string } }) {
       fetchGig();
     } else {
       const err = await res.json();
-      alert(err.error || "Error accepting gig");
+      if (res.status === 403 && err.error.includes("verification required")) {
+        alert("You need to verify your Student ID first. Redirecting to verification page...");
+        router.push("/dashboard/verify");
+      } else {
+        alert(err.error || "Error accepting gig");
+      }
     }
     setActionLoading(false);
   };

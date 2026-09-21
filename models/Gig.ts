@@ -11,6 +11,7 @@ const GigSchema = new mongoose.Schema({
     type: { type: String, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number], required: true }, // [longitude, latitude]
   },
+  address: { type: String },
   status: { type: String, default: 'Open' }, // Open, Accepted, In-Progress, Completed
   expiresAt: { type: Date, required: true },
   createdAt: { type: Date, default: Date.now },
