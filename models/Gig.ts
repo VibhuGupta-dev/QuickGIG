@@ -5,6 +5,7 @@ const GigSchema = new mongoose.Schema({
   description: { type: String, required: true },
   category: { type: String, required: true },
   payment: { type: Number, required: true },
+  isNegotiable: { type: Boolean, default: false },
   postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   location: {
     type: { type: String, enum: ['Point'], default: 'Point' },

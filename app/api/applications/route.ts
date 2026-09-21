@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     }
 
     await dbConnect();
-    const { gigId } = await req.json();
+    const { gigId, proposedPrice } = await req.json();
     // @ts-expect-error session.user lacks id
     const workerId = session.user.id;
 
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     }
 
     // Create Application & change Gig status to Accepted
-    const application = await Application.create({ gigId, workerId, status: 'Accepted' });
+    const application = await Application.create({ gigId, workerId, proposedPrice, status: 'Accepted' });
     gig.status = 'Accepted';
     await gig.save();
 

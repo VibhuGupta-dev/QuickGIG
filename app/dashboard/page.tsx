@@ -2,7 +2,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, LogOut, LayoutDashboard, Briefcase, Search } from "lucide-react";
+import { Plus, LogOut, LayoutDashboard, Briefcase, Search, Menu, X, User as UserIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
@@ -12,11 +12,12 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<'find' | 'provide'>('find');
   
   // Sub-tabs for 'find' view
-  const [findTab, setFindTab] = useState<'nearby' | 'applications'>('nearby');
+  const [findTab, setFindTab] = useState<'nearby' | 'applications' | 'all'>('nearby');
   
   const [gigs, setGigs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<{lng: number, lat: number} | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,6 +28,16 @@ export default function Dashboard() {
     if (!location) return;
     setLoading(true);
     fetch(`/api/gigs/nearby?lng=${location.lng}&lat=${location.lat}&radius=10`)
+      .then(res => res.json())
+      .then(data => {
+        setGigs(data);
+        setLoading(false);
+      });
+  };
+
+  const fetchAllGigs = () => {
+    setLoading(true);
+    fetch(`/api/gigs/all`)
       .then(res => res.json())
       .then(data => {
         setGigs(data);
@@ -51,7 +62,7 @@ export default function Dashboard() {
       .then(data => {
         // applications have gigId populated
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setGigs(data.map((app: any) => ({ ...app.gigId, applicationStatus: app.status })));
+        setGigs(data.map((app: any) => ({ ...app.gigId, applicationStatus: app.status, proposedPrice: app.proposedPrice })));
         setLoading(false);
       });
   };
@@ -70,6 +81,8 @@ export default function Dashboard() {
           } else {
             fetchNearby();
           }
+        } else if (findTab === 'all') {
+          fetchAllGigs();
         } else if (findTab === 'applications') {
           fetchMyApplications();
         }
@@ -84,67 +97,93 @@ export default function Dashboard() {
   if (!session) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 md:pb-0 font-medium">
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center gap-2">
-          <LayoutDashboard className="w-5 h-5 text-black" />
-          <h1 className="text-xl font-bold text-black">Dashboard</h1>
+    <div className="min-h-screen bg-gray-50 pb-20 md:pb-0 font-medium relative">
+      {/* Sidebar Overlay */}
+      {isMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => setIsMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar Navigation */}
+      <div className={`fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-black flex items-center gap-2">
+            <LayoutDashboard className="w-5 h-5" /> QuickGig
+          </h2>
+          <button onClick={() => setIsMenuOpen(false)} className="text-gray-500 hover:text-black p-1 rounded-full hover:bg-gray-100">
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <button onClick={() => signOut()} className="text-sm font-medium text-gray-500 hover:text-black flex items-center gap-1">
-          <LogOut className="w-4 h-4" /> Logout
-        </button>
+        <div className="p-4 space-y-2">
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-4">Find Work</div>
+          <button 
+            onClick={() => { setViewMode('find'); setFindTab('nearby'); setIsMenuOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${viewMode === 'find' && findTab === 'nearby' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+          >
+            <Search className="w-4 h-4" /> Nearby Gigs
+          </button>
+          <button 
+            onClick={() => { setViewMode('find'); setFindTab('all'); setIsMenuOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${viewMode === 'find' && findTab === 'all' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+          >
+            <LayoutDashboard className="w-4 h-4" /> All Gigs
+          </button>
+          <button 
+            onClick={() => { setViewMode('find'); setFindTab('applications'); setIsMenuOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${viewMode === 'find' && findTab === 'applications' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+          >
+            <Briefcase className="w-4 h-4" /> My Applications
+          </button>
+
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-6">Post Work</div>
+          <button 
+            onClick={() => { setViewMode('provide'); setIsMenuOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${viewMode === 'provide' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+          >
+            <Plus className="w-4 h-4" /> My Posted Gigs
+          </button>
+        </div>
+        
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
+          <button onClick={() => signOut()} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors">
+            <LogOut className="w-4 h-4" /> Logout
+          </button>
+        </div>
+      </div>
+
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-4 flex justify-between items-center sticky top-0 z-30 shadow-sm">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setIsMenuOpen(true)} className="p-1 hover:bg-gray-100 rounded-full transition-colors text-black">
+            <Menu className="w-6 h-6" />
+          </button>
+          <h1 className="text-xl font-bold text-black hidden sm:block">Dashboard</h1>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full">
+          <UserIcon className="w-4 h-4 text-gray-600" />
+          <span className="text-sm font-bold text-gray-800">{session.user?.name || 'User'}</span>
+        </div>
       </header>
 
       <main className="p-4 max-w-2xl mx-auto space-y-6">
         
-        {/* Main Area Toggle */}
-        <div className="flex bg-gray-200/50 p-1 rounded-xl">
-          <button 
-            onClick={() => { setViewMode('find'); setGigs([]); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-lg transition-all ${viewMode === 'find' ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}
-          >
-            <Search className="w-4 h-4" /> Find Work
-          </button>
-          <button 
-            onClick={() => { setViewMode('provide'); setGigs([]); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-lg transition-all ${viewMode === 'provide' ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}
-          >
-            <Briefcase className="w-4 h-4" /> Post Work
-          </button>
-        </div>
-
-        {/* Find Work View */}
-        {viewMode === 'find' && (
-          <div className="space-y-4 pt-2">
-            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
-              <button 
-                onClick={() => setFindTab('nearby')}
-                className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${findTab === 'nearby' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
-              >
-                Nearby Gigs
-              </button>
-              <button 
-                onClick={() => setFindTab('applications')}
-                className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${findTab === 'applications' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
-              >
-                My Applications
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Post Work View */}
-        {viewMode === 'provide' && (
-          <div className="flex justify-between items-center pt-2">
-            <h2 className="text-lg font-bold text-gray-800">My Posted Gigs</h2>
+        <div className="flex justify-between items-center pt-2">
+          <h2 className="text-xl font-bold text-gray-900">
+            {viewMode === 'find' && findTab === 'nearby' && 'Nearby Gigs'}
+            {viewMode === 'find' && findTab === 'all' && 'All Gigs'}
+            {viewMode === 'find' && findTab === 'applications' && 'My Applications'}
+            {viewMode === 'provide' && 'My Posted Gigs'}
+          </h2>
+          {viewMode === 'provide' && (
             <Link href="/dashboard/add-gig" className="flex items-center text-sm font-medium bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 transition-colors shadow-sm">
               <Plus className="w-4 h-4 mr-1" /> Post New Gig
             </Link>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Gigs List */}
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4">
           {loading ? (
             <div className="text-center p-12 text-gray-500">Loading gigs...</div>
           ) : gigs.length === 0 ? (
@@ -173,15 +212,21 @@ export default function Dashboard() {
                   <div className="flex flex-col">
                     <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Pay</span>
                     <span className="font-bold text-black text-lg">₹{gig.payment}</span>
+                    {gig.isNegotiable && <span className="text-xs text-blue-500 font-semibold mt-0.5">Negotiable</span>}
                   </div>
-                  <div className="flex items-center text-xs text-gray-400 font-semibold gap-2">
-                    {viewMode === 'find' && findTab === 'nearby' && gig.postedBy?.name && (
-                      <span>By {gig.postedBy.name}</span>
-                    )}
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center text-xs text-gray-400 font-semibold gap-2">
+                      {viewMode === 'find' && (findTab === 'nearby' || findTab === 'all') && gig.postedBy?.name && (
+                        <span>By {gig.postedBy.name}</span>
+                      )}
+                      <span>{new Date(gig.createdAt).toLocaleDateString()}</span>
+                    </div>
                     {gig.applicationStatus && (
-                      <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-md">App Status: {gig.applicationStatus}</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        {gig.proposedPrice && <span className="text-xs text-gray-500">Proposed: ₹{gig.proposedPrice}</span>}
+                        <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-md text-xs font-bold">App: {gig.applicationStatus}</span>
+                      </div>
                     )}
-                    <span>{new Date(gig.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
               </Link>

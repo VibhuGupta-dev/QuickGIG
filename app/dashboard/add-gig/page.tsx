@@ -24,7 +24,8 @@ export default function AddGig() {
     description: "",
     category: CATEGORIES[0],
     payment: "",
-    expiresIn: "7"
+    expiresIn: "7",
+    isNegotiable: false
   });
   const [location, setLocation] = useState<{lng: number, lat: number} | null>(null);
   const [locating, setLocating] = useState(false);
@@ -118,6 +119,7 @@ export default function AddGig() {
           description: formData.description,
           category: formData.category,
           payment: Number(formData.payment),
+          isNegotiable: formData.isNegotiable,
           longitude: location.lng,
           latitude: location.lat,
           expiresAt: expiresAt.toISOString(),
@@ -216,6 +218,17 @@ export default function AddGig() {
               </button>
             </div>
             {!priceLocked && <p className="text-xs text-gray-500 mt-1">AI ensures market-standard pricing to protect both parties.</p>}
+            
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isNegotiable"
+                className="w-4 h-4 text-black border-gray-300 rounded focus:ring-black"
+                checked={formData.isNegotiable}
+                onChange={(e) => setFormData({ ...formData, isNegotiable: e.target.checked })}
+              />
+              <label htmlFor="isNegotiable" className="text-sm text-gray-700">Price is Negotiable</label>
+            </div>
           </div>
 
           <div>

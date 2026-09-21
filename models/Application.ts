@@ -4,6 +4,7 @@ const ApplicationSchema = new mongoose.Schema({
   gigId: { type: mongoose.Schema.Types.ObjectId, ref: 'Gig', required: true },
   workerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   status: { type: String, default: 'Applied' }, // Applied, Accepted, Rejected
+  proposedPrice: { type: Number },
   appliedAt: { type: Date, default: Date.now },
 });
 

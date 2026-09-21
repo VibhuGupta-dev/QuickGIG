@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     await dbConnect();
     const body = await req.json();
-    const { title, description, category, payment, longitude, latitude, expiresAt } = body;
+    const { title, description, category, payment, isNegotiable, longitude, latitude, expiresAt } = body;
 
     if (!longitude || !latitude) {
       return NextResponse.json({ error: "Location is required to post a gig" }, { status: 400 });
@@ -48,6 +48,7 @@ export async function POST(req: Request) {
       description,
       category,
       payment,
+      isNegotiable,
       location: {
         type: 'Point',
         coordinates: [Number(longitude), Number(latitude)]

@@ -12,6 +12,7 @@ export default function GigDetail({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [review, setReview] = useState({ rating: 5, comment: "" });
+  const [proposedPrice, setProposedPrice] = useState("");
   
   // Chat state
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -70,7 +71,10 @@ export default function GigDetail({ params }: { params: { id: string } }) {
     const res = await fetch("/api/applications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gigId: gig._id }),
+      body: JSON.stringify({ 
+        gigId: gig._id,
+        proposedPrice: proposedPrice ? Number(proposedPrice) : undefined
+      }),
     });
     if (res.ok) {
       alert("Gig Accepted!");
@@ -180,9 +184,14 @@ export default function GigDetail({ params }: { params: { id: string } }) {
             )}
           </div>
           {gig.application && (
-             <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-sm">
-                <span className="font-bold text-gray-700">Assigned Worker: </span>
-                <span className="text-gray-900">{gig.application.workerId.name}</span>
+             <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-sm flex justify-between items-center">
+                <div>
+                  <span className="font-bold text-gray-700">Assigned Worker: </span>
+                  <span className="text-gray-900">{gig.application.workerId.name}</span>
+                </div>
+                {gig.application.proposedPrice && (
+                  <span className="text-blue-600 font-bold">Proposed: ₹{gig.application.proposedPrice}</span>
+                )}
              </div>
           )}
         </div>
@@ -192,13 +201,28 @@ export default function GigDetail({ params }: { params: { id: string } }) {
           <h3 className="text-lg font-bold text-gray-900">Actions</h3>
           
           {!isPoster && gig.status === 'Open' && (
-            <button 
-              onClick={handleAccept}
-              disabled={actionLoading}
-              className="w-full bg-black text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition-colors"
-            >
-              {actionLoading ? "Processing..." : "Accept this Gig"}
-            </button>
+            <div className="space-y-3">
+              {gig.isNegotiable && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Your Proposed Price (₹)</label>
+                  <input
+                    type="number"
+                    className="w-full rounded-lg border border-gray-300 py-2 px-3 text-gray-900 focus:ring-2 focus:ring-black sm:text-sm"
+                    placeholder={`e.g. ${gig.payment}`}
+                    value={proposedPrice}
+                    onChange={(e) => setProposedPrice(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Leave blank to accept original price.</p>
+                </div>
+              )}
+              <button 
+                onClick={handleAccept}
+                disabled={actionLoading}
+                className="w-full bg-black text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition-colors"
+              >
+                {actionLoading ? "Processing..." : "Accept this Gig"}
+              </button>
+            </div>
           )}
 
           {isPoster && gig.status === 'Accepted' && (
