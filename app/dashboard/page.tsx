@@ -1,23 +1,25 @@
 "use client";
 import { useSession, signOut } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { Plus, LogOut, LayoutDashboard, Briefcase, Search, Menu, X, User as UserIcon, MapPin, Sparkles, AlertCircle } from "lucide-react";
+import {
+  Plus, LogOut, Briefcase, Search, X, MapPin, Sparkles, AlertCircle,
+  Heart, MessageCircle, User as UserIcon, Bell, Zap, ChevronDown, Settings
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const CATEGORIES = ["All", "Errand", "Cleaning", "Tutoring", "Moving Help", "Pet Care", "Handyman", "Other"];
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
-  
+
   const [viewMode, setViewMode] = useState<'find' | 'provide'>('find');
   const [findTab, setFindTab] = useState<'nearby' | 'applications' | 'all'>('nearby');
-  
+
   const [gigs, setGigs] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [location, setLocation] = useState<{lng: number, lat: number} | null>(null);
+  const [location, setLocation] = useState<{ lng: number; lat: number } | null>(null);
   const [addressName, setAddressName] = useState("");
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -25,54 +27,54 @@ export default function Dashboard() {
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
 
+  // Navbar UI state
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [wishlistIds, setWishlistIds] = useState<string[]>([]);
+  const profileRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (status === "unauthenticated") router.push("/auth/login");
   }, [status, router]);
+
+  // Close profile menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const fetchNearby = () => {
     if (!location) return;
     setLoading(true);
     let url = `/api/gigs/nearby?lng=${location.lng}&lat=${location.lat}&radius=10&q=${encodeURIComponent(searchQuery)}`;
     if (selectedCategory !== "All") url += `&category=${encodeURIComponent(selectedCategory)}`;
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        setGigs(data);
-        setLoading(false);
-      });
+    fetch(url).then(res => res.json()).then(data => { setGigs(data); setLoading(false); });
   };
 
   const fetchAllGigs = () => {
     setLoading(true);
     let url = `/api/gigs/all?q=${encodeURIComponent(searchQuery)}`;
     if (selectedCategory !== "All") url += `&category=${encodeURIComponent(selectedCategory)}`;
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        setGigs(data);
-        setLoading(false);
-      });
+    fetch(url).then(res => res.json()).then(data => { setGigs(data); setLoading(false); });
   };
 
   const fetchMyPosted = () => {
     setLoading(true);
-    fetch(`/api/gigs/me`)
-      .then(res => res.json())
-      .then(data => {
-        setGigs(data);
-        setLoading(false);
-      });
+    fetch(`/api/gigs/me`).then(res => res.json()).then(data => { setGigs(data); setLoading(false); });
   };
 
   const fetchMyApplications = () => {
     setLoading(true);
-    fetch(`/api/applications`)
-      .then(res => res.json())
-      .then(data => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setGigs(data.map((app: any) => ({ ...app.gigId, applicationStatus: app.status, proposedPrice: app.proposedPrice })));
-        setLoading(false);
-      });
+    fetch(`/api/applications`).then(res => res.json()).then(data => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setGigs(data.map((app: any) => ({ ...app.gigId, applicationStatus: app.status, proposedPrice: app.proposedPrice })));
+      setLoading(false);
+    });
   };
 
   useEffect(() => {
@@ -87,27 +89,20 @@ export default function Dashboard() {
                   try {
                     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`);
                     const data = await res.json();
-                    if (data && data.display_name) {
+                    if (data?.display_name) {
                       setAddressName(data.address.city || data.address.town || data.address.village || "Current Location");
                     }
-                  } catch (e) {}
+                  } catch (e) { }
                 },
-                () => alert("Location is required to find nearby gigs. Or you can search for a custom location.")
+                () => setShowLocationModal(true)
               );
             }
-          } else {
-            fetchNearby();
-          }
-        } else if (findTab === 'all') {
-          fetchAllGigs();
-        } else if (findTab === 'applications') {
-          fetchMyApplications();
-        }
-      } else if (viewMode === 'provide') {
-        fetchMyPosted();
-      }
+          } else { fetchNearby(); }
+        } else if (findTab === 'all') { fetchAllGigs(); }
+        else if (findTab === 'applications') { fetchMyApplications(); }
+      } else if (viewMode === 'provide') { fetchMyPosted(); }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, viewMode, findTab, location, searchQuery, selectedCategory]);
 
   const handleLocationSearch = async (e: React.FormEvent) => {
@@ -117,177 +112,299 @@ export default function Dashboard() {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json`);
       const data = await res.json();
-      if (data && data.length > 0) {
+      if (data?.length > 0) {
         const { lat, lon, display_name } = data[0];
         setLocation({ lat: Number(lat), lng: Number(lon) });
         setAddressName(display_name.split(',')[0]);
         setFindTab('nearby');
-      } else {
-        alert("Location not found.");
-      }
-    } catch (e) {
-      alert("Error finding location.");
-    }
+        setShowLocationModal(false);
+      } else { alert("Location not found."); }
+    } catch { alert("Error finding location."); }
     setIsGeocoding(false);
   };
 
-  if (status === "loading") return <div className="min-h-screen bg-gray-50 p-8 flex justify-center items-center text-gray-500 font-bold">Loading...</div>;
+  const handleDetectLocation = () => {
+    setIsGeocoding(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        setLocation({ lng: pos.coords.longitude, lat: pos.coords.latitude });
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`);
+          const data = await res.json();
+          if (data?.display_name) {
+            setAddressName(data.address.city || data.address.town || data.address.village || "Current Location");
+          }
+        } catch (e) { }
+        setIsGeocoding(false);
+        setShowLocationModal(false);
+      },
+      () => { setIsGeocoding(false); alert("Could not get location."); }
+    );
+  };
+
+  const toggleWishlist = (gigId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setWishlistIds(prev =>
+      prev.includes(gigId) ? prev.filter(id => id !== gigId) : [...prev, gigId]
+    );
+  };
+
+  if (status === "loading") return <div className="min-h-screen bg-black flex justify-center items-center text-gray-400 font-bold">Loading...</div>;
   if (!session) return null;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-24 md:pb-8 font-medium relative">
-      {/* Sidebar Overlay */}
-      {isMenuOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity" onClick={() => setIsMenuOpen(false)} />
+    <div className="min-h-screen bg-black font-medium">
+
+      {/* ─── LOCATION MODAL ─── */}
+      {showLocationModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-950 border border-gray-800 rounded-3xl p-6 w-full max-w-md space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold text-white">Set Your Location</h3>
+              <button onClick={() => setShowLocationModal(false)} className="text-gray-500 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleLocationSearch} className="flex gap-2">
+              <div className="relative flex-1">
+                <MapPin className="w-4 h-4 absolute left-3 top-3 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Enter city, area..."
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-gray-900 border border-gray-700 text-white text-sm placeholder:text-gray-600 outline-none focus:border-gray-500"
+                  value={locationQuery}
+                  onChange={e => setLocationQuery(e.target.value)}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isGeocoding || !locationQuery.trim()}
+                className="bg-white text-black px-4 rounded-xl text-sm font-bold hover:bg-gray-200 disabled:bg-gray-700 disabled:text-gray-500 transition-colors"
+              >
+                {isGeocoding ? "..." : "Search"}
+              </button>
+            </form>
+            <div className="flex items-center gap-3 text-xs text-gray-600">
+              <div className="h-px bg-gray-800 flex-1" /><span>OR</span><div className="h-px bg-gray-800 flex-1" />
+            </div>
+            <button
+              onClick={handleDetectLocation}
+              disabled={isGeocoding}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+            >
+              <MapPin className="w-4 h-4" /> {isGeocoding ? "Detecting..." : "Use GPS Location"}
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* Sidebar Navigation */}
-      <div className={`fixed top-0 left-0 h-full w-72 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <h2 className="text-2xl font-black text-black flex items-center gap-2 tracking-tight">
-            <Sparkles className="w-6 h-6 text-blue-600" /> QuickGig
-          </h2>
-          <button onClick={() => setIsMenuOpen(false)} className="text-gray-400 hover:text-black p-2 rounded-full hover:bg-white shadow-sm transition-all">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-4 space-y-2">
-          <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3 mt-4 px-2">Explore Work</div>
-          <button 
-            onClick={() => { setViewMode('find'); setFindTab('nearby'); setIsMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all font-semibold ${viewMode === 'find' && findTab === 'nearby' ? 'bg-black text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 hover:text-black'}`}
+      {/* ─────────────────────────────────────────────
+          NAVBAR
+      ───────────────────────────────────────────── */}
+      <header className="bg-black border-b border-gray-800 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
+
+          {/* 1. Logo */}
+          <Link href="/dashboard" className="flex items-center gap-1.5 shrink-0 mr-2">
+            <Zap className="w-5 h-5 text-white fill-white" />
+            <span className="font-black text-lg text-white tracking-tight">QuickGig</span>
+          </Link>
+
+          {/* 2. Location Pill */}
+          <button
+            onClick={() => setShowLocationModal(true)}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-full bg-gray-900 border border-gray-700 hover:border-gray-500 transition-colors group shrink-0"
           >
-            <MapPin className="w-5 h-5" /> Nearby Gigs
-          </button>
-          <button 
-            onClick={() => { setViewMode('find'); setFindTab('all'); setIsMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all font-semibold ${viewMode === 'find' && findTab === 'all' ? 'bg-black text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 hover:text-black'}`}
-          >
-            <Search className="w-5 h-5" /> All Gigs
-          </button>
-          <button 
-            onClick={() => { setViewMode('find'); setFindTab('applications'); setIsMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all font-semibold ${viewMode === 'find' && findTab === 'applications' ? 'bg-black text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 hover:text-black'}`}
-          >
-            <Briefcase className="w-5 h-5" /> My Applications
+            <MapPin className="w-3.5 h-3.5 text-gray-400 group-hover:text-white transition-colors" />
+            <span className="text-xs font-semibold text-gray-300 max-w-[100px] truncate">
+              {addressName || "Set Location"}
+            </span>
+            <ChevronDown className="w-3 h-3 text-gray-600" />
           </button>
 
-          <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3 mt-8 px-2">Offer Work</div>
-          <button 
-            onClick={() => { setViewMode('provide'); setIsMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all font-semibold ${viewMode === 'provide' ? 'bg-black text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 hover:text-black'}`}
-          >
-            <Plus className="w-5 h-5" /> My Posted Gigs
-          </button>
-        </div>
-        
-        <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-100 bg-gray-50/50">
-          <button onClick={() => signOut()} className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-red-50 text-red-600 rounded-2xl font-bold hover:bg-red-100 transition-colors shadow-sm">
-            <LogOut className="w-5 h-5" /> Logout
-          </button>
-        </div>
-      </div>
+          {/* 3. Search Bar — grows to fill space */}
+          <div className="flex-1 relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+            <input
+              type="text"
+              placeholder="Search gigs..."
+              className="w-full pl-9 pr-4 py-2 rounded-full bg-gray-900 border border-gray-700 text-white text-sm placeholder:text-gray-600 outline-none focus:border-gray-500 transition-colors"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
 
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/80 sticky top-0 z-30">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setIsMenuOpen(true)} className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-black">
-              <Menu className="w-6 h-6" />
+          {/* 4. Wishlist */}
+          <button
+            onClick={() => { setViewMode('find'); setFindTab('applications'); }}
+            className="relative p-2 rounded-full hover:bg-gray-900 transition-colors group shrink-0"
+            title="Wishlist"
+          >
+            <Heart className={`w-5 h-5 transition-colors ${wishlistIds.length > 0 ? 'text-red-400 fill-red-400' : 'text-gray-400 group-hover:text-white'}`} />
+            {wishlistIds.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                {wishlistIds.length}
+              </span>
+            )}
+          </button>
+
+          {/* 5. Chats */}
+          <Link
+            href="/dashboard/gig"
+            className="relative p-2 rounded-full hover:bg-gray-900 transition-colors group shrink-0"
+            title="Chats"
+          >
+            <MessageCircle className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
+          </Link>
+
+          {/* 6. Profile Dropdown */}
+          <div className="relative shrink-0" ref={profileRef}>
+            <button
+              onClick={() => setShowProfileMenu(v => !v)}
+              className="flex items-center gap-1.5 p-1.5 rounded-full hover:bg-gray-900 transition-colors"
+            >
+              <div className="w-7 h-7 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center">
+                <span className="text-xs font-black text-white">
+                  {session.user?.name?.charAt(0).toUpperCase() || "U"}
+                </span>
+              </div>
+              <ChevronDown className="w-3 h-3 text-gray-500 hidden sm:block" />
             </button>
-            {/* Location Display in Header */}
-            {viewMode === 'find' && (findTab === 'nearby' || findTab === 'all') && addressName && (
-              <div className="hidden sm:flex items-center gap-1.5 text-sm font-bold text-gray-800 bg-gray-100 px-3 py-1.5 rounded-full">
-                <MapPin className="w-4 h-4 text-blue-600" />
-                {addressName}
+
+            {showProfileMenu && (
+              <div className="absolute right-0 top-12 w-52 bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-gray-800">
+                  <p className="text-sm font-bold text-white">{session.user?.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
+                </div>
+                <div className="p-2 space-y-1">
+                  <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors font-semibold text-left">
+                    <UserIcon className="w-4 h-4" /> Profile
+                  </button>
+                  <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors font-semibold text-left">
+                    <Settings className="w-4 h-4" /> Settings
+                  </button>
+                  <div className="h-px bg-gray-800 my-1" />
+                  <button
+                    onClick={() => signOut()}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-950 transition-colors font-semibold text-left"
+                  >
+                    <LogOut className="w-4 h-4" /> Logout
+                  </button>
+                </div>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-gray-100 to-gray-50 border border-gray-200 rounded-full shadow-sm">
-            <UserIcon className="w-4 h-4 text-gray-700" />
-            <span className="text-sm font-bold text-gray-900 pr-1">{session.user?.name?.split(' ')[0] || 'User'}</span>
-          </div>
+
+          {/* 7. +Gig Button */}
+          <Link
+            href="/dashboard/add-gig"
+            className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full bg-white text-black text-sm font-bold hover:bg-gray-200 transition-colors shrink-0"
+          >
+            <Plus className="w-4 h-4" /> Gig
+          </Link>
+
+          {/* 8. Notifications Bell */}
+          <button
+            className="relative p-2 rounded-full hover:bg-gray-900 transition-colors group shrink-0"
+            title="Notifications"
+          >
+            <Bell className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
+            {/* Notification dot */}
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-black"></span>
+          </button>
+
+        </div>
+
+        {/* ── Mobile Location Bar ── */}
+        <div className="sm:hidden px-4 pb-3 flex gap-2">
+          <button
+            onClick={() => setShowLocationModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-900 border border-gray-700 text-xs font-semibold text-gray-300"
+          >
+            <MapPin className="w-3 h-3 text-gray-500" />
+            {addressName || "Set Location"}
+            <ChevronDown className="w-3 h-3 text-gray-600" />
+          </button>
+          <Link
+            href="/dashboard/add-gig"
+            className="ml-auto flex items-center gap-1 px-3 py-1.5 rounded-full bg-white text-black text-xs font-bold"
+          >
+            <Plus className="w-3 h-3" /> Gig
+          </Link>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-12 space-y-8">
-        
-        {/* Welcome Section */}
-        <div className="pt-2">
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+      {/* ─── CATEGORY TABS ─── */}
+      <div className="bg-black border-b border-gray-800 sticky top-16 z-30">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto hide-scrollbar">
+          {/* View mode tabs */}
+          <button
+            onClick={() => { setViewMode('find'); setFindTab('nearby'); }}
+            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all shrink-0 ${viewMode === 'find' && findTab === 'nearby' ? 'bg-white text-black' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:text-white hover:border-gray-500'}`}
+          >
+            📍 Nearby
+          </button>
+          <button
+            onClick={() => { setViewMode('find'); setFindTab('all'); }}
+            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all shrink-0 ${viewMode === 'find' && findTab === 'all' ? 'bg-white text-black' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:text-white hover:border-gray-500'}`}
+          >
+            🌐 All Gigs
+          </button>
+          <button
+            onClick={() => { setViewMode('find'); setFindTab('applications'); }}
+            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all shrink-0 ${viewMode === 'find' && findTab === 'applications' ? 'bg-white text-black' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:text-white hover:border-gray-500'}`}
+          >
+            📋 Applications
+          </button>
+          <button
+            onClick={() => setViewMode('provide')}
+            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all shrink-0 ${viewMode === 'provide' ? 'bg-white text-black' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:text-white hover:border-gray-500'}`}
+          >
+            ✍️ My Gigs
+          </button>
+
+          {/* Divider */}
+          <div className="w-px bg-gray-800 shrink-0 mx-1" />
+
+          {/* Category pills — only in find mode */}
+          {(viewMode === 'find' && (findTab === 'nearby' || findTab === 'all')) && CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all shrink-0 ${selectedCategory === cat ? 'bg-white text-black' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:text-white hover:border-gray-500'}`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ─── MAIN CONTENT ─── */}
+      <main className="max-w-3xl mx-auto px-4 pt-6 pb-24 space-y-6">
+
+        {/* Welcome */}
+        <div>
+          <h1 className="text-2xl font-black text-white tracking-tight">
             Hi, {session.user?.name?.split(' ')[0]} 👋
           </h1>
-          <p className="text-gray-500 font-medium mt-1">
-            {viewMode === 'find' ? "Ready to find some work today?" : "What do you need help with?"}
+          <p className="text-gray-500 text-sm mt-0.5">
+            {viewMode === 'find' ? "Find work near you" : "Manage your posted gigs"}
           </p>
         </div>
 
-        {/* Search Tools for 'find' view */}
-        {viewMode === 'find' && (findTab === 'nearby' || findTab === 'all') && (
-          <div className="space-y-5">
-            {/* Unified Search Box */}
-            <div className="bg-white p-2 rounded-3xl border border-gray-200 shadow-sm flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
-                <Search className="w-5 h-5 absolute left-4 top-3.5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="What are you looking for?"
-                  className="w-full pl-11 pr-4 py-3 rounded-2xl bg-gray-50 border-none text-sm font-medium focus:ring-0 outline-none placeholder:text-gray-400"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <form onSubmit={handleLocationSearch} className="relative flex-1 flex gap-2">
-                <div className="relative flex-1">
-                  <MapPin className="w-5 h-5 absolute left-4 top-3.5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Enter city..."
-                    className="w-full pl-11 pr-4 py-3 rounded-2xl bg-gray-50 border-none text-sm font-medium focus:ring-0 outline-none placeholder:text-gray-400"
-                    value={locationQuery}
-                    onChange={(e) => setLocationQuery(e.target.value)}
-                  />
-                </div>
-                <button 
-                  type="submit" 
-                  disabled={isGeocoding || !locationQuery.trim()}
-                  className="bg-black text-white px-6 rounded-2xl text-sm font-bold hover:bg-gray-800 disabled:bg-gray-300 transition-all shadow-md"
-                >
-                  {isGeocoding ? "..." : "Go"}
-                </button>
-              </form>
-            </div>
-
-            {/* Category Pills */}
-            <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar scroll-smooth">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
-                    selectedCategory === cat 
-                      ? 'bg-black text-white shadow-md' 
-                      : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Header for list */}
-        <div className="flex justify-between items-end pt-2 border-b border-gray-200 pb-4">
-          <h2 className="text-xl font-black text-gray-900 tracking-tight">
-            {viewMode === 'find' && findTab === 'nearby' && 'Available Nearby'}
-            {viewMode === 'find' && findTab === 'all' && 'All Open Gigs'}
-            {viewMode === 'find' && findTab === 'applications' && 'Your Applications'}
-            {viewMode === 'provide' && 'Your Posted Gigs'}
+        {/* List Header */}
+        <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+          <h2 className="text-base font-black text-white">
+            {viewMode === 'find' && findTab === 'nearby' && '📍 Available Nearby'}
+            {viewMode === 'find' && findTab === 'all' && '🌐 All Open Gigs'}
+            {viewMode === 'find' && findTab === 'applications' && '📋 Your Applications'}
+            {viewMode === 'provide' && '✍️ Your Posted Gigs'}
           </h2>
           {viewMode === 'provide' && (
-            <Link href="/dashboard/add-gig" className="hidden sm:flex items-center text-sm font-bold bg-blue-600 text-white px-5 py-2.5 rounded-full hover:bg-blue-700 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5">
-              <Plus className="w-4 h-4 mr-1.5" /> Post Gig
+            <Link href="/dashboard/add-gig" className="flex items-center text-xs font-bold bg-white text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors">
+              <Plus className="w-3.5 h-3.5 mr-1" /> Post Gig
             </Link>
           )}
         </div>
@@ -296,85 +413,92 @@ export default function Dashboard() {
         <div className="space-y-4">
           {loading ? (
             <div className="space-y-4">
-              {[1,2,3].map(i => (
-                <div key={i} className="h-32 bg-gray-200 rounded-3xl animate-pulse"></div>
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-36 bg-gray-900 rounded-3xl animate-pulse border border-gray-800" />
               ))}
             </div>
           ) : gigs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-white rounded-[2rem] border border-gray-100 shadow-sm border-dashed">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <AlertCircle className="w-8 h-8 text-gray-400" />
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-gray-950 rounded-[2rem] border border-dashed border-gray-800">
+              <div className="w-14 h-14 bg-gray-900 rounded-full flex items-center justify-center mb-4">
+                <AlertCircle className="w-7 h-7 text-gray-600" />
               </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">No gigs found</h3>
+              <h3 className="text-base font-bold text-white mb-1">No gigs found</h3>
               <p className="text-gray-500 text-sm max-w-xs">
-                {viewMode === 'provide' 
-                  ? "You haven't posted any gigs yet. Tap the button below to post your first gig!"
-                  : "We couldn't find any gigs matching your criteria right now. Try changing your location or category."}
+                {viewMode === 'provide'
+                  ? "You haven't posted any gigs yet."
+                  : "No gigs match your criteria. Try changing location or category."}
               </p>
               {viewMode === 'provide' && (
-                <Link href="/dashboard/add-gig" className="mt-6 flex items-center text-sm font-bold bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-all shadow-md">
-                  <Plus className="w-4 h-4 mr-2" /> Post a Gig Now
+                <Link href="/dashboard/add-gig" className="mt-5 flex items-center text-sm font-bold bg-white text-black px-5 py-2.5 rounded-full hover:bg-gray-200 transition-colors">
+                  <Plus className="w-4 h-4 mr-1.5" /> Post a Gig
                 </Link>
               )}
             </div>
           ) : (
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             gigs.map((gig: any) => (
-              <Link href={`/dashboard/gig/${gig._id}`} key={gig._id} className="block bg-white p-6 rounded-[2rem] border border-gray-200 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 group cursor-pointer relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-50 to-transparent opacity-50 rounded-bl-full pointer-events-none"></div>
-                
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-md font-bold tracking-wide">
+              <Link
+                href={`/dashboard/gig/${gig._id}`}
+                key={gig._id}
+                className="block bg-gray-950 p-5 rounded-[2rem] border border-gray-800 hover:border-gray-600 hover:bg-gray-900 transition-all group relative"
+              >
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className="bg-gray-800 text-gray-300 text-[11px] px-2.5 py-1 rounded-md font-bold tracking-wide">
                         {gig.category}
                       </span>
                       {gig.isNegotiable && (
-                        <span className="bg-blue-50 text-blue-600 text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider">
+                        <span className="bg-gray-800 text-gray-500 text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider border border-gray-700">
                           Negotiable
                         </span>
                       )}
                     </div>
-                    <h3 className="font-black text-gray-900 text-xl leading-tight group-hover:text-blue-600 transition-colors">{gig.title}</h3>
+                    <h3 className="font-black text-white text-lg leading-tight group-hover:text-gray-300 transition-colors truncate">{gig.title}</h3>
                   </div>
-                  
-                  <div className="text-right">
-                    <span className="block text-2xl font-black text-black">₹{gig.payment}</span>
+
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <span className="text-2xl font-black text-white">₹{gig.payment}</span>
+                    {/* Wishlist heart on card */}
+                    <button
+                      onClick={(e) => toggleWishlist(gig._id, e)}
+                      className="p-1.5 rounded-full hover:bg-gray-800 transition-colors"
+                    >
+                      <Heart className={`w-4 h-4 transition-colors ${wishlistIds.includes(gig._id) ? 'text-red-400 fill-red-400' : 'text-gray-600 hover:text-red-400'}`} />
+                    </button>
                   </div>
                 </div>
-                
+
                 {gig.address && (
-                  <p className="text-xs font-semibold text-gray-500 mt-3 flex items-center gap-1.5 bg-gray-50 inline-flex px-2 py-1 rounded-md">
-                    <MapPin className="w-3.5 h-3.5 text-gray-400" /> {gig.address}
-                  </p>
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-600 font-semibold">
+                    <MapPin className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{gig.address}</span>
+                  </div>
                 )}
-                
-                <p className="text-sm text-gray-600 mt-3 line-clamp-2 leading-relaxed font-medium">{gig.description}</p>
-                
-                <div className="flex justify-between items-end pt-5 mt-2 border-t border-gray-50">
-                  <div className="flex items-center gap-2">
+
+                <p className="text-sm text-gray-500 mt-2 line-clamp-2 leading-relaxed">{gig.description}</p>
+
+                <div className="flex justify-between items-center pt-4 mt-2 border-t border-gray-800">
+                  <div>
                     {viewMode === 'find' && (findTab === 'nearby' || findTab === 'all') && gig.postedBy?.name && (
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-gray-200 to-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-600">
+                        <div className="w-5 h-5 rounded-full bg-gray-800 flex items-center justify-center text-[9px] font-bold text-gray-400">
                           {gig.postedBy.name.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-xs font-bold text-gray-500">{gig.postedBy.name}</span>
+                        <span className="text-xs font-semibold text-gray-600">{gig.postedBy.name}</span>
                       </div>
                     )}
                   </div>
-                  
-                  <div className="flex flex-col items-end gap-1.5">
+                  <div>
                     {gig.applicationStatus ? (
                       <div className="flex items-center gap-2">
-                        {gig.proposedPrice && <span className="text-xs font-bold text-gray-400">Proposed: ₹{gig.proposedPrice}</span>}
-                        <span className={`px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider ${
-                          gig.applicationStatus === 'Accepted' ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-600'
-                        }`}>
-                          App: {gig.applicationStatus}
+                        {gig.proposedPrice && <span className="text-xs font-bold text-gray-600">₹{gig.proposedPrice}</span>}
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${gig.applicationStatus === 'Accepted' ? 'bg-green-950 text-green-400 border border-green-800' : 'bg-gray-800 text-gray-500'}`}>
+                          {gig.applicationStatus}
                         </span>
                       </div>
                     ) : (
-                      <span className={`px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider ${gig.status === 'Open' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${gig.status === 'Open' ? 'bg-green-950 text-green-400 border border-green-800' : 'bg-gray-800 text-gray-500'}`}>
                         {gig.status}
                       </span>
                     )}
@@ -384,14 +508,34 @@ export default function Dashboard() {
             ))
           )}
         </div>
-        
-        {/* Mobile floating action button for Provide mode */}
-        {viewMode === 'provide' && (
-          <Link href="/dashboard/add-gig" className="sm:hidden fixed bottom-6 right-6 flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 transition-colors hover:scale-105 transform active:scale-95">
-            <Plus className="w-6 h-6" />
-          </Link>
-        )}
       </main>
+
+      {/* Mobile bottom nav */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 flex items-center justify-around px-4 py-3 z-40">
+        <button onClick={() => { setViewMode('find'); setFindTab('nearby'); }} className={`flex flex-col items-center gap-1 ${viewMode === 'find' ? 'text-white' : 'text-gray-600'}`}>
+          <Sparkles className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Explore</span>
+        </button>
+        <button onClick={() => { setViewMode('find'); setFindTab('applications'); }} className={`flex flex-col items-center gap-1 ${findTab === 'applications' && viewMode === 'find' ? 'text-white' : 'text-gray-600'}`}>
+          <Briefcase className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Applied</span>
+        </button>
+        <Link href="/dashboard/add-gig" className="flex flex-col items-center gap-1">
+          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center -mt-5 shadow-xl">
+            <Plus className="w-5 h-5 text-black" />
+          </div>
+          <span className="text-[10px] font-bold text-gray-600 mt-0.5">Post</span>
+        </Link>
+        <button onClick={() => setViewMode('provide')} className={`flex flex-col items-center gap-1 ${viewMode === 'provide' ? 'text-white' : 'text-gray-600'}`}>
+          <UserIcon className="w-5 h-5" />
+          <span className="text-[10px] font-bold">My Gigs</span>
+        </button>
+        <button className="flex flex-col items-center gap-1 text-gray-600 relative">
+          <Bell className="w-5 h-5" />
+          <span className="absolute -top-0.5 right-0 w-2 h-2 bg-red-500 rounded-full border border-black" />
+          <span className="text-[10px] font-bold">Alerts</span>
+        </button>
+      </div>
     </div>
   );
 }
