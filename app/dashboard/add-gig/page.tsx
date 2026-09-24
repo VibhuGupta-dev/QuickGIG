@@ -35,6 +35,24 @@ export default function AddGig() {
   const [locating, setLocating] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [priceLocked, setPriceLocked] = useState(false);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image size should be less than 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      setImageBase64(base64);
+      setImagePreview(base64);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleEstimatePrice = async () => {
     if (!formData.title || !formData.description) {
@@ -159,6 +177,7 @@ export default function AddGig() {
           longitude: location.lng,
           latitude: location.lat,
           expiresAt: expiresAt.toISOString(),
+          image: imageBase64 || null,
         }),
       });
 
@@ -192,6 +211,51 @@ export default function AddGig() {
       <main className="p-4 max-w-2xl mx-auto pt-6">
         <form onSubmit={handleSubmit} className="space-y-6 bg-gray-950 p-6 rounded-2xl border border-gray-800">
           
+          {/* ── Photo Upload ── */}
+          <div>
+            <label className="block text-sm font-semibold text-white mb-2">
+              Gig Photo <span className="text-gray-600 font-normal">(optional)</span>
+            </label>
+            <label className="block cursor-pointer group">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+              />
+              {imagePreview ? (
+                /* Preview */
+                <div className="relative rounded-xl overflow-hidden border border-gray-700 h-40">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">Click to change</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={e => { e.preventDefault(); setImageBase64(null); setImagePreview(null); }}
+                    className="absolute top-2 right-2 w-6 h-6 bg-black/70 text-white rounded-full flex items-center justify-center text-xs font-bold hover:bg-red-600 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                /* Upload box */
+                <div className="border-2 border-dashed border-gray-700 rounded-xl h-40 flex flex-col items-center justify-center gap-2 group-hover:border-gray-500 transition-colors bg-gray-900/50">
+                  {/* Placeholder SVG illustration */}
+                  <svg className="w-12 h-12 text-gray-700" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="64" height="64" rx="12" fill="#1f2937"/>
+                    <path d="M12 44 L24 30 L32 38 L42 24 L52 44 Z" fill="#374151" stroke="#4b5563" strokeWidth="1"/>
+                    <circle cx="20" cy="22" r="5" fill="#374151" stroke="#4b5563" strokeWidth="1"/>
+                    <path d="M28 20 L28 14 M25 17 L31 17" stroke="#6b7280" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                  <p className="text-xs text-gray-500 font-semibold">Click to upload photo</p>
+                  <p className="text-[10px] text-gray-700">JPG, PNG, WEBP — Max 2MB</p>
+                </div>
+              )}
+            </label>
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-white mb-2">Gig Title</label>
             <input

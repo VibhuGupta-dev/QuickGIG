@@ -4,11 +4,13 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import {
   Plus, LogOut, Briefcase, Search, X, MapPin, Sparkles, AlertCircle,
-  Heart, MessageCircle, User as UserIcon, Bell, Zap, ChevronDown, Settings
+  Heart, MessageCircle, User as UserIcon, Bell, Zap, ChevronDown, Settings,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const CATEGORIES = ["All", "Errand", "Cleaning", "Tutoring", "Moving Help", "Pet Care", "Handyman", "Other"];
+const ITEMS_PER_PAGE = 8; // 2 rows × 4 columns
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -33,9 +35,19 @@ export default function Dashboard() {
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(gigs.length / ITEMS_PER_PAGE);
+  const pagedGigs = gigs.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
   useEffect(() => {
     if (status === "unauthenticated") router.push("/auth/login");
   }, [status, router]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [viewMode, findTab, searchQuery, selectedCategory]);
 
   // Close profile menu on outside click
   useEffect(() => {
@@ -382,7 +394,7 @@ export default function Dashboard() {
       </div>
 
       {/* ─── MAIN CONTENT ─── */}
-      <main className="max-w-3xl mx-auto px-4 pt-6 pb-24 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 pt-6 pb-24 space-y-6">
 
         {/* Welcome */}
         <div>
@@ -396,12 +408,19 @@ export default function Dashboard() {
 
         {/* List Header */}
         <div className="flex justify-between items-center border-b border-gray-800 pb-3">
-          <h2 className="text-base font-black text-white">
-            {viewMode === 'find' && findTab === 'nearby' && '📍 Available Nearby'}
-            {viewMode === 'find' && findTab === 'all' && '🌐 All Open Gigs'}
-            {viewMode === 'find' && findTab === 'applications' && '📋 Your Applications'}
-            {viewMode === 'provide' && '✍️ Your Posted Gigs'}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-black text-white">
+              {viewMode === 'find' && findTab === 'nearby' && '📍 Available Nearby'}
+              {viewMode === 'find' && findTab === 'all' && '🌐 All Open Gigs'}
+              {viewMode === 'find' && findTab === 'applications' && '📋 Your Applications'}
+              {viewMode === 'provide' && '✍️ Your Posted Gigs'}
+            </h2>
+            {gigs.length > 0 && (
+              <span className="text-xs font-semibold text-gray-500 bg-gray-900 px-2.5 py-0.5 rounded-full border border-gray-700">
+                {gigs.length} total
+              </span>
+            )}
+          </div>
           {viewMode === 'provide' && (
             <Link href="/dashboard/add-gig" className="flex items-center text-xs font-bold bg-white text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors">
               <Plus className="w-3.5 h-3.5 mr-1" /> Post Gig
@@ -409,12 +428,12 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Gigs List */}
-        <div className="space-y-4">
+        {/* Gigs Grid */}
+        <div>
           {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-36 bg-gray-900 rounded-3xl animate-pulse border border-gray-800" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                <div key={i} className="h-52 bg-gray-900 rounded-2xl animate-pulse border border-gray-800" />
               ))}
             </div>
           ) : gigs.length === 0 ? (
@@ -435,77 +454,207 @@ export default function Dashboard() {
               )}
             </div>
           ) : (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            gigs.map((gig: any) => (
-              <Link
-                href={`/dashboard/gig/${gig._id}`}
-                key={gig._id}
-                className="block bg-gray-950 p-5 rounded-[2rem] border border-gray-800 hover:border-gray-600 hover:bg-gray-900 transition-all group relative"
-              >
-                <div className="flex justify-between items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span className="bg-gray-800 text-gray-300 text-[11px] px-2.5 py-1 rounded-md font-bold tracking-wide">
-                        {gig.category}
-                      </span>
+            <div className="space-y-6">
+              {/* 4-column grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {pagedGigs.map((gig: any) => (
+                  <Link
+                    href={`/dashboard/gig/${gig._id}`}
+                    key={gig._id}
+                    className="flex flex-col bg-gray-950 rounded-2xl border border-gray-800 hover:border-gray-600 hover:bg-gray-900 transition-all group overflow-hidden"
+                  >
+                    {/* ── Card Image ── */}
+                    <div className="relative h-32 bg-gray-900 overflow-hidden">
+                      {gig.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={gig.image}
+                          alt={gig.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        /* Dummy SVG placeholder — category themed */
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+                          <svg viewBox="0 0 120 80" className="w-full h-full opacity-60" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="120" height="80" fill="#111827"/>
+                            {/* Sky gradient */}
+                            <rect width="120" height="50" fill="url(#sky)"/>
+                            <defs>
+                              <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#1e293b"/>
+                                <stop offset="100%" stopColor="#0f172a"/>
+                              </linearGradient>
+                            </defs>
+                            {/* Ground */}
+                            <rect y="55" width="120" height="25" fill="#1f2937"/>
+                            {/* Building shapes */}
+                            <rect x="10" y="30" width="18" height="30" rx="1" fill="#374151"/>
+                            <rect x="14" y="34" width="4" height="5" fill="#4b5563"/>
+                            <rect x="20" y="34" width="4" height="5" fill="#4b5563"/>
+                            <rect x="14" y="42" width="4" height="5" fill="#4b5563"/>
+                            <rect x="20" y="42" width="4" height="5" fill="#4b5563"/>
+                            <rect x="35" y="20" width="22" height="40" rx="1" fill="#374151"/>
+                            <rect x="39" y="24" width="5" height="6" fill="#4b5563"/>
+                            <rect x="47" y="24" width="5" height="6" fill="#6b7280"/>
+                            <rect x="39" y="34" width="5" height="6" fill="#4b5563"/>
+                            <rect x="47" y="34" width="5" height="6" fill="#4b5563"/>
+                            <rect x="39" y="44" width="5" height="6" fill="#6b7280"/>
+                            <rect x="47" y="44" width="5" height="6" fill="#4b5563"/>
+                            <rect x="65" y="35" width="16" height="25" rx="1" fill="#374151"/>
+                            <rect x="68" y="38" width="4" height="5" fill="#4b5563"/>
+                            <rect x="74" y="38" width="4" height="5" fill="#6b7280"/>
+                            <rect x="68" y="46" width="4" height="5" fill="#4b5563"/>
+                            <rect x="74" y="46" width="4" height="5" fill="#4b5563"/>
+                            <rect x="90" y="28" width="20" height="32" rx="1" fill="#374151"/>
+                            <rect x="94" y="32" width="5" height="6" fill="#6b7280"/>
+                            <rect x="101" y="32" width="5" height="6" fill="#4b5563"/>
+                            <rect x="94" y="42" width="5" height="6" fill="#4b5563"/>
+                            <rect x="101" y="42" width="5" height="6" fill="#6b7280"/>
+                            {/* Moon */}
+                            <circle cx="100" cy="12" r="6" fill="#1e293b"/>
+                            <circle cx="103" cy="10" r="5" fill="#0f172a"/>
+                            {/* Stars */}
+                            <circle cx="20" cy="8" r="0.8" fill="#6b7280"/>
+                            <circle cx="50" cy="5" r="0.8" fill="#6b7280"/>
+                            <circle cx="70" cy="10" r="0.8" fill="#6b7280"/>
+                            <circle cx="30" cy="15" r="0.8" fill="#4b5563"/>
+                            {/* Category label */}
+                            <rect x="5" y="62" width="40" height="12" rx="3" fill="#374151"/>
+                            <text x="25" y="71" textAnchor="middle" fontSize="5" fill="#9ca3af" fontFamily="sans-serif" fontWeight="bold">
+                              {gig.category?.toUpperCase()}
+                            </text>
+                          </svg>
+                        </div>
+                      )}
+                      {/* Negotiable badge on image */}
                       {gig.isNegotiable && (
-                        <span className="bg-gray-800 text-gray-500 text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider border border-gray-700">
+                        <span className="absolute top-2 left-2 bg-black/70 text-gray-300 text-[9px] px-1.5 py-0.5 rounded font-bold backdrop-blur-sm">
                           Negotiable
                         </span>
                       )}
                     </div>
-                    <h3 className="font-black text-white text-lg leading-tight group-hover:text-gray-300 transition-colors truncate">{gig.title}</h3>
-                  </div>
+                    {/* Card Top */}
+                    <div className="flex items-center justify-between px-3 pt-3 pb-1">
+                      <span className="bg-gray-800 text-gray-300 text-[10px] px-2 py-0.5 rounded font-bold tracking-wide truncate max-w-[80px]">
+                        {gig.category}
+                      </span>
+                      <button
+                        onClick={(e) => toggleWishlist(gig._id, e)}
+                        className="p-1 rounded-full hover:bg-gray-800 transition-colors shrink-0"
+                      >
+                        <Heart className={`w-3.5 h-3.5 transition-colors ${wishlistIds.includes(gig._id) ? 'text-red-400 fill-red-400' : 'text-gray-600 hover:text-red-400'}`} />
+                      </button>
+                    </div>
 
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <span className="text-2xl font-black text-white">₹{gig.payment}</span>
-                    {/* Wishlist heart on card */}
+                    {/* Card Body */}
+                    <div className="px-3 pb-2 flex-1 flex flex-col gap-1.5">
+                      <h3 className="font-black text-white text-sm leading-snug group-hover:text-gray-300 transition-colors line-clamp-2">
+                        {gig.title}
+                      </h3>
+                      {gig.address && (
+                        <div className="flex items-center gap-1 text-[10px] text-gray-600 font-semibold">
+                          <MapPin className="w-2.5 h-2.5 shrink-0" />
+                          <span className="truncate">{gig.address}</span>
+                        </div>
+                      )}
+                      <p className="text-[11px] text-gray-500 line-clamp-3 leading-relaxed flex-1">
+                        {gig.description}
+                      </p>
+                    </div>
+
+                    {/* Card Footer */}
+                    <div className="px-3 pb-3 pt-2 border-t border-gray-800 flex items-center justify-between mt-auto">
+                      <div>
+                        <span className="text-base font-black text-white">₹{gig.payment}</span>
+                        {gig.isNegotiable && (
+                          <p className="text-[9px] text-gray-600 font-bold">Negotiable</p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {gig.applicationStatus ? (
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                            gig.applicationStatus === 'Accepted'
+                              ? 'bg-green-950 text-green-400 border border-green-800'
+                              : 'bg-gray-800 text-gray-500'
+                          }`}>
+                            {gig.applicationStatus}
+                          </span>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                            gig.status === 'Open'
+                              ? 'bg-green-950 text-green-400 border border-green-800'
+                              : 'bg-gray-800 text-gray-500'
+                          }`}>
+                            {gig.status}
+                          </span>
+                        )}
+                        {viewMode === 'find' && (findTab === 'nearby' || findTab === 'all') && gig.postedBy?.name && (
+                          <span className="text-[9px] font-semibold text-gray-700 truncate max-w-[60px]">
+                            {gig.postedBy.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              {/* ── Pagination ── */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-gray-800">
+                  <p className="text-xs text-gray-500 font-semibold">
+                    Showing{' '}
+                    <span className="text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, gigs.length)}</span>
+                    {' '}of{' '}
+                    <span className="text-white">{gigs.length}</span> gigs
+                  </p>
+
+                  <div className="flex items-center gap-1.5">
                     <button
-                      onClick={(e) => toggleWishlist(gig._id, e)}
-                      className="p-1.5 rounded-full hover:bg-gray-800 transition-colors"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-900 border border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
-                      <Heart className={`w-4 h-4 transition-colors ${wishlistIds.includes(gig._id) ? 'text-red-400 fill-red-400' : 'text-gray-600 hover:text-red-400'}`} />
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                      .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, idx) =>
+                        p === '...' ? (
+                          <span key={`dots-${idx}`} className="w-8 h-8 flex items-center justify-center text-gray-600 text-sm">…</span>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() => setCurrentPage(p as number)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${
+                              currentPage === p
+                                ? 'bg-white text-black'
+                                : 'bg-gray-900 border border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )}
+
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-900 border border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-
-                {gig.address && (
-                  <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-600 font-semibold">
-                    <MapPin className="w-3 h-3 shrink-0" />
-                    <span className="truncate">{gig.address}</span>
-                  </div>
-                )}
-
-                <p className="text-sm text-gray-500 mt-2 line-clamp-2 leading-relaxed">{gig.description}</p>
-
-                <div className="flex justify-between items-center pt-4 mt-2 border-t border-gray-800">
-                  <div>
-                    {viewMode === 'find' && (findTab === 'nearby' || findTab === 'all') && gig.postedBy?.name && (
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-gray-800 flex items-center justify-center text-[9px] font-bold text-gray-400">
-                          {gig.postedBy.name.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="text-xs font-semibold text-gray-600">{gig.postedBy.name}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    {gig.applicationStatus ? (
-                      <div className="flex items-center gap-2">
-                        {gig.proposedPrice && <span className="text-xs font-bold text-gray-600">₹{gig.proposedPrice}</span>}
-                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${gig.applicationStatus === 'Accepted' ? 'bg-green-950 text-green-400 border border-green-800' : 'bg-gray-800 text-gray-500'}`}>
-                          {gig.applicationStatus}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${gig.status === 'Open' ? 'bg-green-950 text-green-400 border border-green-800' : 'bg-gray-800 text-gray-500'}`}>
-                        {gig.status}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))
+              )}
+            </div>
           )}
         </div>
       </main>
