@@ -31,7 +31,6 @@ export default function ChatPage({ params }: { params: { applicationId: string }
     if (status === "unauthenticated") router.push("/auth/login");
     if (status === "authenticated") {
       fetchMessages();
-      // Poll every 5 seconds
       const interval = setInterval(fetchMessages, 5000);
       return () => clearInterval(interval);
     }
@@ -62,32 +61,54 @@ export default function ChatPage({ params }: { params: { applicationId: string }
     }
   };
 
-  if (loading || status === "loading") return <div className="p-8 text-center">Loading chat...</div>;
+  if (loading || status === "loading") return (
+    <div className="min-h-screen bg-[#faf9f5] flex items-center justify-center">
+      <div className="text-[#8f8d86] text-sm">Loading chat...</div>
+    </div>
+  );
 
   // @ts-expect-error session.user lacks id
   const currentUserId = session?.user?.id;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-medium flex flex-col">
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-4 sticky top-0 z-50 flex items-center shadow-sm">
-        <button onClick={() => router.back()} className="text-gray-500 hover:text-black mr-4 transition-colors">
-          <ArrowLeft className="w-6 h-6" />
+    <div className="min-h-screen bg-[#faf9f5] flex flex-col">
+      {/* Header */}
+      <header className="bg-[#faf9f5]/90 backdrop-blur-md border-b border-[#e8e6df] px-4 py-3 sticky top-0 z-50 flex items-center gap-3">
+        <button
+          onClick={() => router.back()}
+          className="text-[#8f8d86] hover:text-[#1f1e1d] transition-colors p-1 rounded-lg hover:bg-[#f0eee6]"
+        >
+          <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-xl font-bold text-black">Chat</h1>
+        <div>
+          <h1 className="text-base font-semibold text-[#1f1e1d]">Chat</h1>
+          <p className="text-xs text-[#8f8d86]">Refreshes every 5 seconds</p>
+        </div>
       </header>
 
-      <main className="flex-1 p-4 max-w-2xl mx-auto w-full flex flex-col space-y-4 pt-6 overflow-y-auto pb-24">
+      {/* Messages */}
+      <main className="flex-1 overflow-y-auto p-4 max-w-2xl mx-auto w-full pb-28 pt-4 space-y-3">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-10">No messages yet. Say hi!</div>
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+            <div className="w-12 h-12 rounded-full bg-[#f0eee6] flex items-center justify-center mb-3">
+              <Send className="w-5 h-5 text-[#cc785c]" />
+            </div>
+            <p className="text-[#65635e] font-medium text-sm">No messages yet</p>
+            <p className="text-[#8f8d86] text-xs mt-1">Say hi to get the conversation started!</p>
+          </div>
         ) : (
           messages.map(msg => {
             const isMe = msg.senderId === currentUserId;
             return (
               <div key={msg._id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] p-3 rounded-2xl ${isMe ? 'bg-purple-600 text-white rounded-tr-sm' : 'bg-white border border-gray-200 text-gray-800 rounded-tl-sm shadow-sm'}`}>
+                <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm ${
+                  isMe
+                    ? 'bg-[#1f1e1d] text-white rounded-tr-sm'
+                    : 'bg-white border border-[#e8e6df] text-[#1f1e1d] rounded-tl-sm'
+                }`}>
                   <p>{msg.text}</p>
-                  <p className={`text-[10px] mt-1 ${isMe ? 'text-purple-200' : 'text-gray-400'}`}>
-                    {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  <p className={`text-[10px] mt-1 ${isMe ? 'text-white/50' : 'text-[#8f8d86]'}`}>
+                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
               </div>
@@ -97,17 +118,22 @@ export default function ChatPage({ params }: { params: { applicationId: string }
         <div ref={bottomRef} />
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 md:static md:max-w-2xl md:mx-auto md:w-full md:rounded-b-3xl">
+      {/* Input Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#e8e6df] px-4 py-3 z-50">
         <form onSubmit={handleSend} className="flex gap-2 max-w-2xl mx-auto">
           <input
             type="text"
             value={text}
             onChange={e => setText(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-600"
+            className="flex-1 border border-[#e8e6df] bg-[#faf9f5] text-[#1f1e1d] rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-[#cc785c] focus:ring-1 focus:ring-[#cc785c] placeholder:text-[#8f8d86] transition-colors"
           />
-          <button type="submit" disabled={!text.trim()} className="bg-purple-600 text-white p-3 rounded-full hover:bg-purple-700 disabled:opacity-50 transition-colors">
-            <Send className="w-5 h-5" />
+          <button
+            type="submit"
+            disabled={!text.trim()}
+            className="bg-[#cc785c] text-white p-2.5 rounded-full hover:bg-[#b8694f] disabled:opacity-40 transition-colors shrink-0 flex items-center justify-center"
+          >
+            <Send className="w-4 h-4" />
           </button>
         </form>
       </div>
