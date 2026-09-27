@@ -91,13 +91,8 @@ export default function AddGig() {
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
-    } else if (status === "authenticated") {
-      // @ts-expect-error isVerified is custom
-      if (!session?.user?.isVerified) {
-        router.push("/dashboard/verify");
-      }
     }
-  }, [status, session, router]);
+  }, [status, router]);
 
   const handleGetLocation = () => {
     setLocating(true);
@@ -221,9 +216,8 @@ export default function AddGig() {
   };
 
 
-  // @ts-expect-error isVerified custom
-  if (status === "loading" || !session?.user?.isVerified) {
-    return <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center text-[#475569]">Checking permissions...</div>;
+  if (status === "loading") {
+    return <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center text-[#475569]">Loading...</div>;
   }
 
   return (
