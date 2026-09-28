@@ -135,7 +135,9 @@ export default function GigDetail({ params }: { params: { id: string } }) {
 
     // @ts-expect-error session.user lacks id
     const isPoster = session?.user?.id === (gig.postedBy?._id || gig.postedBy);
-    const receiverId = isPoster ? gig.application.workerId._id : gig.postedBy._id;
+    const receiverId = isPoster
+      ? (gig.application.workerId?._id || gig.application.workerId)
+      : (gig.postedBy?._id || gig.postedBy);
 
     const content = newMessage;
     setNewMessage("");
@@ -186,6 +188,17 @@ export default function GigDetail({ params }: { params: { id: string } }) {
 
         {/* Gig Info Card */}
         <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 space-y-4 shadow-sm">
+          {gig.image && (
+            <div className="w-full h-56 md:h-72 rounded-xl overflow-hidden bg-slate-50 border border-[#e2e8f0]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={gig.image}
+                alt={gig.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
           <div className="flex justify-between items-start gap-3">
             <h2 className="text-xl font-bold text-[#0f172a] leading-snug">{gig.title}</h2>
             <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${statusColors[gig.status] || statusColors["Completed"]}`}>
@@ -201,10 +214,10 @@ export default function GigDetail({ params }: { params: { id: string } }) {
               <Clock className="w-3.5 h-3.5" />
               {new Date(gig.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
             </span>
-            {gig.location && (
+            {(gig.address || (gig.location?.coordinates && `${gig.location.coordinates[1]?.toFixed(4)}, ${gig.location.coordinates[0]?.toFixed(4)}`)) && (
               <span className="flex items-center gap-1 text-[#94a3b8] text-xs">
-                <MapPin className="w-3.5 h-3.5 text-[#2563eb]" />
-                {gig.location}
+                <MapPin className="w-3.5 h-3.5 text-[#2563eb] shrink-0" />
+                <span>{gig.address || `${gig.location.coordinates[1]?.toFixed(4)}, ${gig.location.coordinates[0]?.toFixed(4)}`}</span>
               </span>
             )}
           </div>

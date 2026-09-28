@@ -18,7 +18,8 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<'find' | 'provide'>('find');
   const [findTab, setFindTab] = useState<'nearby' | 'applications' | 'all'>('nearby');
 
-  const [gigs, setGigs] = useState([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [gigs, setGigs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<{ lng: number; lat: number } | null>(null);
   const [addressName, setAddressName] = useState("");
@@ -40,9 +41,10 @@ export default function Dashboard() {
   const profileRef = useRef<HTMLDivElement>(null);
 
   // Pagination
+  const gigList = Array.isArray(gigs) ? gigs : [];
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.ceil(gigs.length / ITEMS_PER_PAGE);
-  const pagedGigs = gigs.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(gigList.length / ITEMS_PER_PAGE));
+  const pagedGigs = gigList.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/auth/login");
@@ -69,28 +71,65 @@ export default function Dashboard() {
     setLoading(true);
     let url = `/api/gigs/nearby?lng=${location.lng}&lat=${location.lat}&radius=10&q=${encodeURIComponent(searchQuery)}`;
     if (selectedCategory !== "All") url += `&category=${encodeURIComponent(selectedCategory)}`;
-    fetch(url).then(res => res.json()).then(data => { setGigs(data); setLoading(false); });
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        setGigs(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setGigs([]);
+        setLoading(false);
+      });
   };
 
   const fetchAllGigs = () => {
     setLoading(true);
     let url = `/api/gigs/all?q=${encodeURIComponent(searchQuery)}`;
     if (selectedCategory !== "All") url += `&category=${encodeURIComponent(selectedCategory)}`;
-    fetch(url).then(res => res.json()).then(data => { setGigs(data); setLoading(false); });
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        setGigs(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setGigs([]);
+        setLoading(false);
+      });
   };
 
   const fetchMyPosted = () => {
     setLoading(true);
-    fetch(`/api/gigs/me`).then(res => res.json()).then(data => { setGigs(data); setLoading(false); });
+    fetch(`/api/gigs/me`)
+      .then(res => res.json())
+      .then(data => {
+        setGigs(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setGigs([]);
+        setLoading(false);
+      });
   };
 
   const fetchMyApplications = () => {
     setLoading(true);
-    fetch(`/api/applications`).then(res => res.json()).then(data => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setGigs(data.map((app: any) => ({ ...app.gigId, applicationStatus: app.status, proposedPrice: app.proposedPrice })));
-      setLoading(false);
-    });
+    fetch(`/api/applications`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setGigs(data.map((app: any) => ({ ...app.gigId, applicationStatus: app.status, proposedPrice: app.proposedPrice })));
+        } else {
+          setGigs([]);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setGigs([]);
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -484,9 +523,9 @@ export default function Dashboard() {
                 <><Layers className="w-4 h-4 text-[#2563eb]" /> Your Posted Gigs</>
               )}
             </h2>
-            {gigs.length > 0 && (
+            {gigList.length > 0 && (
               <span className="text-xs font-medium text-[#475569] bg-slate-100 px-2.5 py-0.5 rounded-full border border-[#e2e8f0]">
-                {gigs.length} total
+                {gigList.length} total
               </span>
             )}
           </div>
@@ -505,7 +544,7 @@ export default function Dashboard() {
                 <div key={i} className="h-52 bg-white rounded-2xl animate-pulse border border-[#e2e8f0]" />
               ))}
             </div>
-          ) : gigs.length === 0 ? (
+          ) : gigList.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-white rounded-2xl border border-dashed border-[#e2e8f0]">
               <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
                 <AlertCircle className="w-6 h-6 text-[#94a3b8]" />
@@ -622,9 +661,9 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between pt-4 border-t border-[#e2e8f0]">
                   <p className="text-xs text-[#475569] font-medium">
                     Showing{' '}
-                    <span className="text-[#0f172a] font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, gigs.length)}</span>
+                    <span className="text-[#0f172a] font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, gigList.length)}</span>
                     {' '}of{' '}
-                    <span className="text-[#0f172a] font-semibold">{gigs.length}</span> gigs
+                    <span className="text-[#0f172a] font-semibold">{gigList.length}</span> gigs
                   </p>
 
                   <div className="flex items-center gap-1.5">

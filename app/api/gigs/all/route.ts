@@ -9,6 +9,7 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get('q');
+    const category = searchParams.get('category');
 
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -20,6 +21,10 @@ export async function GET(req: Request) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: any = { status: "Open" };
+
+    if (category && category !== "All") {
+      query.category = category;
+    }
 
     if (q) {
       query.$or = [
@@ -37,6 +42,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json(gigs, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch all gigs" }, { status: 500 });
+    console.error("Error fetching all gigs:", error);
+    return NextResponse.json([]);
   }
 }

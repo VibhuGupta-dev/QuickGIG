@@ -14,6 +14,8 @@ const UserSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   age: { type: Number },
   session: { type: String },
+  institution: { type: String },
+  studentIdCardImage: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 

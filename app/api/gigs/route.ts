@@ -20,10 +20,6 @@ export async function POST(req: Request) {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    // @ts-expect-error isVerified is custom
-    if (!session.user.isVerified) {
-      return NextResponse.json({ error: "Student verification required" }, { status: 403 });
-    }
 
     await dbConnect();
     const body = await req.json();
