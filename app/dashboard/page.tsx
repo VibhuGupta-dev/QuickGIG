@@ -5,15 +5,17 @@ import Link from "next/link";
 import {
   Plus, LogOut, Briefcase, Search, X, MapPin, Sparkles, AlertCircle,
   Heart, MessageCircle, User as UserIcon, Bell, Zap, ChevronDown, Settings,
-  ChevronLeft, ChevronRight, Globe, FileText, Layers
+  ChevronLeft, ChevronRight, Globe, FileText, Layers, Moon, Sun
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "../theme-provider";
 
-const CATEGORIES = ["All", "Errand", "Cleaning", "Tutoring", "Moving Help", "Pet Care", "Handyman", "Other"];
+const CATEGORIES = ["All", "Errand", "Cleaning", "Tutoring", "Moving Help", "Pet Care", "Handyman", "Delivery", "Assembly", "Yard Work", "Tech Support", "Event Help", "Photography", "Cooking", "Shopping", "Other"];
 const ITEMS_PER_PAGE = 8; // 2 rows × 4 columns
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
+  const { theme, toggleTheme } = useTheme();
 
   const [viewMode, setViewMode] = useState<'find' | 'provide'>('find');
   const [findTab, setFindTab] = useState<'nearby' | 'applications' | 'all'>('nearby');
@@ -39,6 +41,47 @@ export default function Dashboard() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
   const profileRef = useRef<HTMLDivElement>(null);
+  
+  // Notifications state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  // Close notifications menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const fetchNotifications = () => {
+    fetch('/api/notifications')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setNotifications(data);
+      })
+      .catch(() => {});
+  };
+
+  const markNotificationsRead = () => {
+    fetch('/api/notifications', { method: 'PATCH' })
+      .then(() => {
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      });
+  };
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 30000); // Polling every 30s
+      return () => clearInterval(interval);
+    }
+  }, [status]);
 
   // Pagination
   const gigList = Array.isArray(gigs) ? gigs : [];
@@ -392,11 +435,14 @@ export default function Dashboard() {
                   <p className="text-xs text-[#64748b] truncate">{session.user?.email}</p>
                 </div>
                 <div className="p-1.5 space-y-0.5">
-                  <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#475569] hover:bg-slate-50 hover:text-[#0f172a] transition-colors font-medium text-left">
+                  <Link href="/dashboard/profile" className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#475569] hover:bg-slate-50 hover:text-[#0f172a] transition-colors font-medium text-left">
                     <UserIcon className="w-4 h-4" /> Profile
-                  </button>
-                  <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#475569] hover:bg-slate-50 hover:text-[#0f172a] transition-colors font-medium text-left">
-                    <Settings className="w-4 h-4" /> Settings
+                  </Link>
+                  <button onClick={toggleTheme} className="w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs text-[#475569] hover:bg-slate-50 hover:text-[#0f172a] transition-colors font-medium text-left">
+                    <span className="flex items-center gap-2.5">
+                      {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                      {theme === 'light' ? "Dark Mode" : "Light Mode"}
+                    </span>
                   </button>
                   <div className="h-px bg-[#e2e8f0] my-1" />
                   <button
@@ -419,13 +465,46 @@ export default function Dashboard() {
           </Link>
 
           {/* 8. Notifications Bell */}
-          <button
-            className="relative p-2 rounded-full hover:bg-slate-100 transition-colors group shrink-0"
-            title="Notifications"
-          >
-            <Bell className="w-5 h-5 text-[#94a3b8] group-hover:text-[#0f172a] transition-colors" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#2563eb] rounded-full border border-white"></span>
-          </button>
+          <div className="relative shrink-0" ref={notifRef}>
+            <button
+              onClick={() => {
+                setShowNotifications(v => !v);
+                if (!showNotifications && unreadCount > 0) markNotificationsRead();
+              }}
+              className="relative p-2 rounded-full hover:bg-slate-100 transition-colors group"
+              title="Notifications"
+            >
+              <Bell className="w-5 h-5 text-[#94a3b8] group-hover:text-[#0f172a] transition-colors" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#2563eb] rounded-full border border-white"></span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <div className="absolute right-0 top-12 w-72 bg-white border border-[#e2e8f0] rounded-2xl shadow-lg overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-[#e2e8f0] bg-slate-50 flex justify-between items-center">
+                  <p className="text-sm font-semibold text-[#0f172a]">Notifications</p>
+                </div>
+                <div className="max-h-80 overflow-y-auto divide-y divide-[#e2e8f0]">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-xs text-[#94a3b8]">No notifications yet</div>
+                  ) : (
+                    notifications.map(n => (
+                      <Link 
+                        key={n._id} 
+                        href={n.link || "#"}
+                        onClick={() => setShowNotifications(false)}
+                        className={`block px-4 py-3 hover:bg-slate-50 transition-colors ${!n.isRead ? 'bg-[#f8fafc]' : ''}`}
+                      >
+                        <p className={`text-xs ${!n.isRead ? 'font-semibold text-[#0f172a]' : 'text-[#475569]'}`}>{n.content}</p>
+                        <p className="text-[10px] text-[#94a3b8] mt-1">{new Date(n.createdAt).toLocaleString()}</p>
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
         </div>
 
@@ -638,11 +717,13 @@ export default function Dashboard() {
                           </span>
                         ) : (
                           <span className={`px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
-                            gig.status === 'Open'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-slate-100 text-[#475569]'
+                            new Date(gig.expiresAt) < new Date() && gig.status === 'Open'
+                              ? 'bg-red-50 text-red-700 border border-red-200'
+                              : gig.status === 'Open'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-slate-100 text-[#475569]'
                           }`}>
-                            {gig.status}
+                            {new Date(gig.expiresAt) < new Date() && gig.status === 'Open' ? 'Incomplete' : gig.status}
                           </span>
                         )}
                         {viewMode === 'find' && (findTab === 'nearby' || findTab === 'all') && gig.postedBy?.name && (

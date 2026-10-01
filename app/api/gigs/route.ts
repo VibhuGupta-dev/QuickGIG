@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Gig from "@/models/Gig";
+import User from "@/models/User";
+import Notification from "@/models/Notification";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
@@ -55,6 +57,34 @@ export async function POST(req: Request) {
       // @ts-expect-error session.user lacks id
       postedBy: session.user.id
     });
+
+    try {
+      const nearbyUsers = await User.find({
+        location: {
+          $near: {
+            $geometry: {
+              type: "Point",
+              coordinates: [Number(longitude), Number(latitude)]
+            },
+            $maxDistance: 10000 // 10km radius
+          }
+        },
+        // @ts-expect-error session.user lacks id
+        _id: { $ne: session.user.id }
+      });
+
+      const notifications = nearbyUsers.map(user => ({
+        userId: user._id,
+        type: 'NEW_GIG',
+        content: `A new gig "${title}" is available near you!`,
+        link: `/dashboard/gig/${gig._id}`
+      }));
+      if (notifications.length > 0) {
+        await Notification.insertMany(notifications);
+      }
+    } catch (err) {
+      console.error("Failed to send nearby notifications", err);
+    }
 
     return NextResponse.json(gig, { status: 201 });
   } catch (error) {

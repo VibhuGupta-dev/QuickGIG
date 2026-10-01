@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import Message from "@/models/Message";
 import Application from "@/models/Application";
 import Gig from "@/models/Gig";
+import Notification from "@/models/Notification";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
@@ -64,6 +65,16 @@ export async function POST(req: Request, { params }: { params: { applicationId: 
       applicationId,
       senderId: userId,
       text: text.trim()
+    });
+
+    // Create a notification for the receiver
+    const receiverId = application.workerId.toString() === userId ? gig.postedBy.toString() : application.workerId.toString();
+    const senderName = session.user?.name || "Someone";
+    await Notification.create({
+      userId: receiverId,
+      type: 'MESSAGE',
+      content: `New message from ${senderName}`,
+      link: `/dashboard/chats`
     });
 
     return NextResponse.json(message, { status: 201 });

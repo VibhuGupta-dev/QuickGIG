@@ -68,3 +68,22 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Dark Theme Filter Inversion */
+html.dark-theme {
+  filter: invert(1) hue-rotate(180deg);
+  background-color: #070503; /* Inverted f8fafc */
+}
+
+/* Re-invert images, videos, and specific elements so they look normal */
+html.dark-theme img,
+html.dark-theme video,
+html.dark-theme iframe,
+html.dark-theme [style*="background-image"] {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Optional: smooth transition for theme change */
+html {
+  transition: filter 0.3s ease, background-color 0.3s ease;
+}

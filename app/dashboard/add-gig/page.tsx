@@ -12,6 +12,14 @@ const CATEGORIES = [
   "Moving Help",
   "Pet Care",
   "Handyman",
+  "Delivery",
+  "Assembly",
+  "Yard Work",
+  "Tech Support",
+  "Event Help",
+  "Photography",
+  "Cooking",
+  "Shopping",
   "Other"
 ];
 

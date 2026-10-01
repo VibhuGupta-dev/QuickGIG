@@ -25,6 +25,7 @@ export async function GET(req: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: any = {
       status: 'Open',
+      expiresAt: { $gte: new Date() },
       location: {
         $near: {
           $geometry: {
@@ -55,7 +56,10 @@ export async function GET(req: Request) {
     } catch {
       // Fallback if 2dsphere index is building or geospatial query encounters an issue
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const fallbackQuery: any = { status: 'Open' };
+      const fallbackQuery: any = { 
+        status: 'Open',
+        expiresAt: { $gte: new Date() }
+      };
       if (category && category !== "All") fallbackQuery.category = category;
       if (q) {
         fallbackQuery.$or = [

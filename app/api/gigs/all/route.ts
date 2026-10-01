@@ -20,7 +20,10 @@ export async function GET(req: Request) {
     const _ = User;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const query: any = { status: "Open" };
+    const query: any = { 
+      status: "Open",
+      expiresAt: { $gte: new Date() }
+    };
 
     if (category && category !== "All") {
       query.category = category;
