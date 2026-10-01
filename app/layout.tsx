@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "QuickGig",
   description: "Hyper local gig platform",
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
