@@ -134,7 +134,7 @@ export default function GigDetail({ params }: { params: { id: string } }) {
     if (!newMessage.trim() || !gig.application) return;
 
     // @ts-expect-error session.user lacks id
-    const isPoster = session?.user?.id === (gig.postedBy?._id || gig.postedBy);
+    const isPoster = session?.user?.id?.toString() === (gig.postedBy?._id?.toString() || gig.postedBy?.toString());
     const receiverId = isPoster
       ? (gig.application.workerId?._id || gig.application.workerId)
       : (gig.postedBy?._id || gig.postedBy);
@@ -162,7 +162,9 @@ export default function GigDetail({ params }: { params: { id: string } }) {
   );
 
   // @ts-expect-error session.user lacks id
-  const isPoster = session?.user?.id === (gig.postedBy?._id || gig.postedBy);
+  const sessionId = session?.user?.id?.toString();
+  const posterId = gig.postedBy?._id?.toString() || gig.postedBy?.toString();
+  const isPoster = sessionId === posterId;
 
   const statusColors: Record<string, string> = {
     Open: "bg-emerald-50 text-emerald-700 border border-emerald-200",

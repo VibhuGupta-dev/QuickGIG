@@ -677,12 +677,15 @@ export default function Dashboard() {
                       <span className="bg-slate-100 text-[#475569] text-[10px] px-2 py-0.5 rounded-md font-medium tracking-wide truncate max-w-[80px]">
                         {gig.category}
                       </span>
-                      <button
-                        onClick={(e) => toggleWishlist(gig._id, e)}
-                        className="p-1 rounded-full hover:bg-slate-100 transition-colors shrink-0"
-                      >
-                        <Heart className={`w-3.5 h-3.5 transition-colors ${wishlistIds.includes(gig._id) ? 'text-[#2563eb] fill-[#2563eb]' : 'text-[#94a3b8] hover:text-[#2563eb]'}`} />
-                      </button>
+                      {/* Wishlist Button (hide for own gigs) */}
+                      {(gig.postedBy?._id?.toString() || gig.postedBy?.toString()) !== (session?.user as any)?.id?.toString() && (
+                        <button
+                          onClick={(e) => toggleWishlist(gig._id, e)}
+                          className="p-1 rounded-full hover:bg-slate-100 transition-colors shrink-0"
+                        >
+                          <Heart className={`w-3.5 h-3.5 transition-colors ${wishlistIds.includes(gig._id) ? 'text-[#2563eb] fill-[#2563eb]' : 'text-[#94a3b8] hover:text-[#2563eb]'}`} />
+                        </button>
+                      )}
                     </div>
 
                     {/* Card Body */}
