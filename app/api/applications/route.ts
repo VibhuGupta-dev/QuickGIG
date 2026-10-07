@@ -52,9 +52,17 @@ export async function GET() {
     // @ts-expect-error session.user lacks id
     const workerId = session.user.id;
 
-    const apps = await Application.find({ workerId }).populate('gigId').sort({ appliedAt: -1 });
-    return NextResponse.json(apps);
-  } catch {
+    const apps = await Application.find({ workerId })
+      .populate({ path: 'gigId', model: 'Gig' })
+      .sort({ appliedAt: -1 })
+      .lean();
+
+    // Filter out apps where gigId was deleted
+    const validApps = apps.filter((app) => app.gigId != null);
+
+    return NextResponse.json(validApps);
+  } catch (err) {
+    console.error("GET /api/applications error:", err);
     return NextResponse.json({ error: "Failed to fetch applications" }, { status: 500 });
   }
 }

@@ -13,9 +13,10 @@ export async function GET() {
     // @ts-expect-error session.user lacks id
     const userId = session.user.id;
 
-    const gigs = await Gig.find({ postedBy: userId }).sort({ createdAt: -1 });
+    const gigs = await Gig.find({ postedBy: userId }).sort({ createdAt: -1 }).lean();
     return NextResponse.json(gigs);
-  } catch {
+  } catch (err) {
+    console.error("GET /api/gigs/me error:", err);
     return NextResponse.json({ error: "Failed to fetch gigs" }, { status: 500 });
   }
 }

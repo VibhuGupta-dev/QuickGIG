@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, MapPin, ArrowRight } from "lucide-react";
+import { Zap, MapPin, ArrowRight } from "lucide-react";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -71,19 +71,19 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-[#faf9f5] text-[#1f1e1d] font-sans selection:bg-[#cc785c] selection:text-white">
-      <div className="w-full max-w-sm space-y-6 bg-white p-8 rounded-3xl border border-[#e8e6df] shadow-sm">
+    <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-[#f8fafc] text-[#0f172a] font-sans selection:bg-[#2563eb] selection:text-white">
+      <div className="w-full max-w-sm space-y-6 bg-white p-8 rounded-3xl border border-[#e2e8f0] shadow-sm">
         
         {/* Brand */}
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2 mb-4 group">
-            <div className="w-8 h-8 rounded-lg bg-[#cc785c] flex items-center justify-center text-white shadow-sm">
-              <Sparkles className="w-4 h-4 fill-white" />
+            <div className="w-8 h-8 rounded-lg bg-[#2563eb] flex items-center justify-center text-white shadow-sm">
+              <Zap className="w-4 h-4 fill-white" />
             </div>
-            <span className="font-semibold text-lg tracking-tight text-[#1f1e1d]">QuickGig</span>
+            <span className="font-semibold text-lg tracking-tight text-[#0f172a]">QuickGig</span>
           </Link>
-          <h2 className="text-2xl font-serif text-[#1f1e1d]">Create your account</h2>
-          <p className="mt-1 text-xs text-[#65635e]">Join QuickGig to find or post local gigs</p>
+          <h2 className="text-2xl font-bold text-[#0f172a]">Create your account</h2>
+          <p className="mt-1 text-xs text-[#64748b]">Join QuickGig to find or post local gigs</p>
         </div>
         
         <form className="mt-6 space-y-3.5" onSubmit={handleSubmit}>
@@ -94,11 +94,11 @@ export default function Register() {
           )}
 
           <div>
-            <label className="block text-xs font-medium text-[#65635e] mb-1">Full Name</label>
+            <label className="block text-xs font-medium text-[#475569] mb-1">Full Name</label>
             <input
               type="text"
               required
-              className="block w-full rounded-xl border border-[#e8e6df] bg-white py-2 px-3 text-[#1f1e1d] placeholder-[#8f8d86] focus:outline-none focus:border-[#cc785c] sm:text-sm"
+              className="block w-full rounded-xl border border-[#e2e8f0] bg-white py-2 px-3 text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]/20 sm:text-sm"
               placeholder="e.g. Vibhu Gupta"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -106,11 +106,11 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#65635e] mb-1">Email address</label>
+            <label className="block text-xs font-medium text-[#475569] mb-1">Email address</label>
             <input
               type="email"
               required
-              className="block w-full rounded-xl border border-[#e8e6df] bg-white py-2 px-3 text-[#1f1e1d] placeholder-[#8f8d86] focus:outline-none focus:border-[#cc785c] sm:text-sm"
+              className="block w-full rounded-xl border border-[#e2e8f0] bg-white py-2 px-3 text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]/20 sm:text-sm"
               placeholder="name@university.edu"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -118,11 +118,11 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#65635e] mb-1">Password</label>
+            <label className="block text-xs font-medium text-[#475569] mb-1">Password</label>
             <input
               type="password"
               required
-              className="block w-full rounded-xl border border-[#e8e6df] bg-white py-2 px-3 text-[#1f1e1d] placeholder-[#8f8d86] focus:outline-none focus:border-[#cc785c] sm:text-sm"
+              className="block w-full rounded-xl border border-[#e2e8f0] bg-white py-2 px-3 text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]/20 sm:text-sm"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -130,10 +130,10 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#65635e] mb-1">Phone Number (optional)</label>
+            <label className="block text-xs font-medium text-[#475569] mb-1">Phone Number (optional)</label>
             <input
               type="tel"
-              className="block w-full rounded-xl border border-[#e8e6df] bg-white py-2 px-3 text-[#1f1e1d] placeholder-[#8f8d86] focus:outline-none focus:border-[#cc785c] sm:text-sm"
+              className="block w-full rounded-xl border border-[#e2e8f0] bg-white py-2 px-3 text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]/20 sm:text-sm"
               placeholder="+91 98765 43210"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -145,13 +145,13 @@ export default function Register() {
               type="button"
               onClick={handleGetLocation}
               disabled={locating}
-              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 border border-[#e8e6df] rounded-xl text-xs font-medium text-[#65635e] bg-[#faf9f5] hover:bg-[#f0eee6] hover:text-[#1f1e1d] disabled:opacity-50 transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 border border-[#e2e8f0] rounded-xl text-xs font-medium text-[#475569] bg-slate-50 hover:bg-slate-100 hover:text-[#0f172a] disabled:opacity-50 transition-colors"
             >
-              <MapPin className="w-3.5 h-3.5 text-[#cc785c]" />
+              <MapPin className="w-3.5 h-3.5 text-[#2563eb]" />
               {locating ? "Locating..." : location ? "Location Saved ✓" : "Detect Current GPS"}
             </button>
             {!location && (
-              <p className="text-[10px] text-[#8f8d86] mt-1 text-center">
+              <p className="text-[10px] text-[#94a3b8] mt-1 text-center">
                 Enables instant proximity matching within your radius.
               </p>
             )}
@@ -161,7 +161,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1f1e1d] hover:bg-[#383734] px-4 py-2.5 text-sm font-medium text-white transition-all shadow-sm"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] px-4 py-2.5 text-sm font-medium text-white transition-all shadow-sm"
             >
               {loading ? "Creating account..." : "Sign up"}
               <ArrowRight className="w-4 h-4" />
@@ -169,9 +169,9 @@ export default function Register() {
           </div>
         </form>
 
-        <p className="text-center text-xs text-[#65635e] pt-2 border-t border-[#e8e6df]">
+        <p className="text-center text-xs text-[#64748b] pt-2 border-t border-[#e2e8f0]">
           Already have an account?{" "}
-          <Link href="/auth/login" className="font-semibold text-[#cc785c] hover:underline">
+          <Link href="/auth/login" className="font-semibold text-[#2563eb] hover:underline">
             Sign in
           </Link>
         </p>

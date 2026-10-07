@@ -3,7 +3,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Briefcase, MapPin, AlertCircle, FileText, User as UserIcon } from "lucide-react";
+import { ChevronLeft, Briefcase, MapPin, AlertCircle, FileText, User as UserIcon, Clock, ShieldAlert } from "lucide-react";
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
@@ -35,7 +35,19 @@ export default function ProfilePage() {
       const res = await fetch(`/api/applications`);
       const data = await res.json();
       if (Array.isArray(data)) {
-        setGigs(data.map((app: any) => ({ ...app.gigId, applicationStatus: app.status, proposedPrice: app.proposedPrice })));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapped = data
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .filter((app: any) => app.gigId) // skip if gig deleted
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((app: any) => ({
+            ...app.gigId,
+            _id: app.gigId._id,
+            applicationStatus: app.status,
+            proposedPrice: app.proposedPrice,
+            appliedAt: app.appliedAt,
+          }));
+        setGigs(mapped);
       } else {
         setGigs([]);
       }
@@ -136,15 +148,32 @@ export default function ProfilePage() {
               <AlertCircle className="w-6 h-6 text-[#94a3b8] mb-3" />
               <h3 className="text-base font-semibold text-[#0f172a] mb-1">No history found</h3>
               <p className="text-[#475569] text-xs max-w-xs">
-                {activeTab === 'postHistory' ? "You haven't posted any gigs yet." : "You haven't accepted or applied to any gigs yet."}
+                {activeTab === 'postHistory'
+                  ? "You haven't posted any gigs yet. Go to dashboard to post one."
+                  : "You haven't accepted any gigs yet."}
               </p>
+              {activeTab === 'acceptHistory' && (
+                // @ts-expect-error isVerified is custom
+                !session?.user?.isVerified && (
+                  <div className="mt-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 max-w-xs text-left">
+                    <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-semibold text-amber-700">Student verification required</p>
+                      <p className="text-[11px] text-amber-600 mt-0.5">You must verify your Student ID to accept gigs.</p>
+                      <Link href="/dashboard/verify" className="text-[11px] font-semibold text-amber-700 underline mt-1 inline-block">
+                        Verify now →
+                      </Link>
+                    </div>
+                  </div>
+                )
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {gigs.map((gig: any) => (
                 <Link
                   href={`/dashboard/gig/${gig._id || gig.id}`}
-                  key={gig._id || Math.random()}
+                  key={gig._id ? gig._id.toString() : Math.random()}
                   className="flex flex-col bg-white rounded-2xl border border-[#e2e8f0] hover:border-[#2563eb] hover:shadow-md transition-all p-4"
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -161,8 +190,21 @@ export default function ProfilePage() {
                     </div>
                   )}
                   <p className="text-xs text-[#475569] line-clamp-2 mb-3 flex-1">{gig.description}</p>
-                  <div className="mt-auto font-bold text-[#2563eb]">
-                    ₹{gig.payment}
+                  <div className="mt-auto flex items-center justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-[#2563eb]">₹{gig.payment}</span>
+                      {gig.proposedPrice && gig.proposedPrice !== gig.payment && (
+                        <span className="ml-1.5 text-[10px] text-[#94a3b8]">(Proposed: ₹{gig.proposedPrice})</span>
+                      )}
+                    </div>
+                    {(gig.createdAt || gig.appliedAt) && (
+                      <div className="flex items-center gap-1 text-[10px] text-[#94a3b8]">
+                        <Clock className="w-3 h-3 shrink-0" />
+                        <span>
+                          {new Date(activeTab === 'acceptHistory' && gig.appliedAt ? gig.appliedAt : gig.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </Link>
               ))}
